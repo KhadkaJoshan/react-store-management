@@ -28,9 +28,10 @@ app.get("/", (req, res) => {
   return res.json("From Backend");
 });
 //get products list
-app.get("/products", (req, res) => {
-  const sql = "SELECT * FROM products";
-  db.query(sql, (err, data) => {
+app.get("/products/:user_id", (req, res) => {
+  const ID1 = req.params.user_id;
+  const sql = "SELECT ID,Name,Price,Quantity FROM products WHERE user_id = ? ";
+  db.query(sql, [ID1], (err, data) => {
     if (err) return res.json(err);
     return res.json(data);
   });

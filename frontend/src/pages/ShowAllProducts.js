@@ -16,6 +16,8 @@ function ShowAllProducts() {
   const { user, isAuthenticated } = useAuth0();
   const [isRegistered, setIsRegistered] = useState(false);
   const [localUserId, setLocalUserId] = useState([{}]);
+  const localID = localUserId[0].ID;
+  console.log(localID);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -120,12 +122,14 @@ function ShowAllProducts() {
 
   //Fetch products
   useEffect(() => {
-    fetch("http://localhost:8081/products")
-      .then((res) => res.json())
-      .then((data) => setProducts(data))
+    axios
+      .get("http://localhost:8081/products/" + localID)
+      .then((res) => {
+        console.log(res);
+        setProducts(res.data);
+      })
       .catch((err) => console.log(err));
-    console.log("Successfully fetched");
-  }, []);
+  }, [localID]);
   //udpate changes in products value
   function update(e) {
     const ID = JSON.stringify(e.data.ID);
