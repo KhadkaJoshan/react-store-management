@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useReactToPrint } from "react-to-print";
 import Table from "react-bootstrap/Table";
 import "bootstrap/dist/css/bootstrap.css";
@@ -9,29 +9,48 @@ import Button from "react-bootstrap/Button";
 import { useAuth0 } from "@auth0/auth0-react";
 
 const NewBilling = () => {
-  const { user, isAuthenticated } = useAuth0();
   const [products, setProducts] = useState([
-    { Name: "", Price: "", Quantity: "" },
+    { Name: "", Price: 0, Quantity: "" },
   ]);
   const [productName, setProductName] = React.useState([]);
   const tableRef = useRef();
-
+  const { user, isAuthenticated } = useAuth0();
+  //add new empty row
   const addRow = () => {
-    setProducts([...products, { Name: "", Price: "", Quantity: "" }]);
+    setProducts([...products, { Name: "", Price: 0, Quantity: "" }]);
   };
+  const [localUserId, setLocalUserId] = useState([{}]);
+  const localID = localUserId[0].ID;
+  const [totalPrice, setTotalPrice] = useState(0);
+  //get userID
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      axios
+        .post("http://localhost:8081/getusers", { Email: user.email })
+        .then((res) => {
+          setLocalUserId(res.data);
+          console.log(localID);
+        })
+        .catch((err) => console.log(err));
+    }
+  }, [user, isAuthenticated, localID]);
+  //get Product names from database
   async function getProductNames() {
-    await axios.get("http://localhost:8081/products").then((response) => {
-      let data = response.data;
+    await axios
+      .get("http://localhost:8081/products/" + localID)
+      .then((response) => {
+        let data = response.data;
 
-      let finalArray = [];
-      //Storing values in the form of array as response will be in the form of objects
-      finalArray = data.map(function (obj) {
-        return obj.Name;
+        let finalArray = [];
+        //Storing values in the form of array as response will be in the form of objects
+        finalArray = data.map(function (obj) {
+          return obj.Name;
+        });
+        console.log(finalArray);
+        setProductName([...finalArray]);
       });
-      console.log(finalArray);
-      setProductName([...finalArray]);
-    });
   }
+  //update after billing
   function handleSubmit(e) {
     e.preventDefault();
     axios
@@ -40,19 +59,29 @@ const NewBilling = () => {
         console.log(res);
       })
       .catch((err) => console.log(err));
+    window.location.reload();
   }
+  //handle input changes
   const handleInputChange = (index, event) => {
     const { name, value } = event.target;
     const updatedProducts = [...products];
     updatedProducts[index][name] = value;
     setProducts(updatedProducts);
-    console.log(products);
+    calculateTotal(updatedProducts);
   };
-
+  //handle print
   const handlePrint = useReactToPrint({
     content: () => tableRef.current,
     documentTitle: "Products Table",
   });
+  //calculate total
+  const calculateTotal = (updatedRows) => {
+    const totalValue = updatedRows.reduce(
+      (acc, row) => acc + row.Price * row.Quantity,
+      0
+    );
+    setTotalPrice(totalValue);
+  };
 
   return (
     isAuthenticated && (
@@ -73,6 +102,7 @@ const NewBilling = () => {
 
         <Table striped border hover style={{ marginLeft: 20 }} ref={tableRef}>
           <thead>
+            <tr>Bill Details</tr>
             <tr>
               <th style={{ color: "Red" }}>Product Name</th>
               <th style={{ color: "Red" }}>Price</th>
@@ -125,6 +155,9 @@ const NewBilling = () => {
             ))}
           </tbody>
         </Table>
+        <div style={{ alignSelf: "end" }}>
+          <h3>Total: {totalPrice}</h3>
+        </div>
         <div>
           <Button onClick={addRow}>Add Row</Button>
           <Button onClick={handlePrint} style={{ marginLeft: "10px" }}>

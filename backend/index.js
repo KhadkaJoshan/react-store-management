@@ -77,24 +77,51 @@ app.put("/update/:ID", (req, res) => {
 });
 
 //update products quantity after billing
+// app.put("/updateAfterBill", (req, res) => {
+//   var inputBillData = req.body;
+//   for (let i = 0; i < inputBillData.length; i++) {
+//     const naam = inputBillData[i].Name;
+//     const quant = inputBillData[i].Quantity;
+
+//     const sql =
+//       "UPDATE products SET Quantity= Quantity - " +
+//       quant +
+//       " WHERE Name = '" +
+//       naam +
+//       "'";
+//     db.query(sql, [naam, quant], (err, data) => {
+//       if (err) return res.json(err);
+//       return res.json(data);
+//     });
+//   }
+// });
 app.put("/updateAfterBill", (req, res) => {
-  var inputBillData = req.body;
-  for (let i = 0; i < inputBillData.length; i++) {
-    const name = inputBillData[i].Name;
-    const quant = inputBillData[i].Quantity;
+  const products = req.body; // Expecting an array of objects with Name and Quantity
 
-    const sql =
-      "UPDATE products SET Quantity= Quantity - " +
-      quant +
-      " WHERE Name = '" +
-      name +
-      "'";
+  let sql = "UPDATE products SET Quantity = CASE ";
+  const names = [];
 
-    db.query(sql, [name, quant], (err, data) => {
-      if (err) return res.json(err);
-      return res.json(data);
+  products.forEach((product) => {
+    sql += `WHEN Name = ${db.escape(product.Name)} THEN Quantity - ${db.escape(
+      product.Quantity
+    )} `;
+    names.push(product.Name);
+  });
+
+  sql +=
+    "END WHERE Name IN (" +
+    names.map((name) => db.escape(name)).join(", ") +
+    ")";
+
+  db.query(sql, (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({
+      message: "Product quantities updated successfully after bill generation",
+      affectedRows: result.affectedRows,
     });
-  }
+  });
 });
 
 // app.get("/getID", (req, res) => {
@@ -180,15 +207,15 @@ app.post("/check-user", (req, res) => {
 // app.get("/checkauth", verifyJwt, (req, res) => {
 //   return res.json("Authenticated");
 // });
-// app.delete("/delete/:ID", (req, res) => {
-//   const sql = "DELETE FROM products WHERE ID = ?";
-//   const ID = req.params.ID;
+app.delete("/delete/:ID", (req, res) => {
+  const sql = "DELETE FROM products WHERE ID = ?";
+  const ID = req.params.ID;
 
-//   db.query(sql, [ID], (err, data) => {
-//     if (err) return res.json(err);
-//     return res.json(data);
-//   });
-// });
+  db.query(sql, [ID], (err, data) => {
+    if (err) return res.json(err);
+    return res.json(data);
+  });
+});
 
 app.listen(8081, () => {
   console.log("Listening on Port 8081");
