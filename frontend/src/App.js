@@ -9,6 +9,7 @@ import NoPage from "./pages/NoPage";
 import NewBilling from "./pages/NewBill";
 import SignInWithGoogle from "./pages/SignInWithGoogle";
 import LogoutButton from "./pages/logout";
+import Sales from "./pages/Sales";
 
 function App() {
   // const [state, setState] = useState(false);
@@ -20,6 +21,8 @@ function App() {
           <Route path="viewproducts" element={<ShowAllProducts />} />
 
           <Route path="newbilling" element={<NewBilling />} />
+
+          <Route path="sales" element={<Sales />} />
           <Route path="logout" element={<LogoutButton />} />
 
           <Route path="*" element={<NoPage />} />

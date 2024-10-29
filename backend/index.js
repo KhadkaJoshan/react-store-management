@@ -27,10 +27,29 @@ db.connect(function (err) {
 app.get("/", (req, res) => {
   return res.json("From Backend");
 });
+//current Date
+function getDate() {
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const year = today.getFullYear();
+  const date = today.getDate();
+  return `${year}-${month}-${date}`;
+}
+const currentDate = getDate();
 //get products list
 app.get("/products/:user_id", (req, res) => {
   const ID1 = req.params.user_id;
   const sql = "SELECT ID,Name,Price,Quantity FROM products WHERE user_id = ? ";
+  db.query(sql, [ID1], (err, data) => {
+    if (err) return res.json(err);
+    return res.json(data);
+  });
+});
+//get sales list
+app.get("/sales/:user_id", (req, res) => {
+  const ID1 = req.params.user_id;
+  const sql =
+    "SELECT SalesID,SName,SPrice,SQuantity,DOS,Stotal FROM sales WHERE user_id = ? ";
   db.query(sql, [ID1], (err, data) => {
     if (err) return res.json(err);
     return res.json(data);
@@ -95,6 +114,7 @@ app.put("/update/:ID", (req, res) => {
 //     });
 //   }
 // });
+//update
 app.put("/updateAfterBill", (req, res) => {
   const products = req.body; // Expecting an array of objects with Name and Quantity
 
@@ -168,6 +188,34 @@ app.post("/check-user", (req, res) => {
         res.json({ isRegistered: false });
       }
     }
+  });
+});
+//add sales
+app.post("/addSales/:ID/:STotal", (req, res) => {
+  const salesData = req.body; // Expecting an array of objects with name, price, and quantity
+  const ID = req.params.ID;
+  Stotal = req.params.STotal;
+  // Convert received data to a format suitable for bulk insert
+  const values = salesData.map((sale) => [
+    sale.Name,
+    sale.Price,
+    sale.Quantity,
+    ID,
+    currentDate,
+    Stotal,
+  ]);
+
+  const sql =
+    "INSERT INTO sales (SName, SPrice, SQuantity,user_id,DOS,Stotal) VALUES ?";
+
+  db.query(sql, [values], (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({
+      message: "Sales records inserted successfully",
+      affectedRows: result.affectedRows,
+    });
   });
 });
 //authenticate and login user

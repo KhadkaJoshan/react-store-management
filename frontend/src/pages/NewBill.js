@@ -9,15 +9,25 @@ import Button from "react-bootstrap/Button";
 import { useAuth0 } from "@auth0/auth0-react";
 
 const NewBilling = () => {
+  //current Date
+  function getDate() {
+    const today = new Date();
+    const month = today.getMonth() + 1;
+    const year = today.getFullYear();
+    const date = today.getDate();
+    return `${month}/${date}/${year}`;
+  }
+  const currentDate = getDate();
+
   const [products, setProducts] = useState([
-    { Name: "", Price: 0, Quantity: "" },
+    { Name: "", Price: 0, Quantity: 0 },
   ]);
   const [productName, setProductName] = React.useState([]);
   const tableRef = useRef();
   const { user, isAuthenticated } = useAuth0();
   //add new empty row
   const addRow = () => {
-    setProducts([...products, { Name: "", Price: 0, Quantity: "" }]);
+    setProducts([...products, { Name: "", Price: 0, Quantity: 0 }]);
   };
   const [localUserId, setLocalUserId] = useState([{}]);
   const localID = localUserId[0].ID;
@@ -50,6 +60,7 @@ const NewBilling = () => {
         setProductName([...finalArray]);
       });
   }
+
   //update after billing
   function handleSubmit(e) {
     e.preventDefault();
@@ -59,14 +70,35 @@ const NewBilling = () => {
         console.log(res);
       })
       .catch((err) => console.log(err));
+    axios
+      .post(
+        "http://localhost:8081/addSales/" + localID + "/" + totalPrice,
+        products
+      )
+      .then((res) => {
+        console.log(res);
+      })
+      .catch((err) => console.log(err));
+
     window.location.reload();
   }
+  // //add sales
+  // function addSales() {
+  //   axios
+  //     .post("http://localhost:8081/addSales/" + localID, products)
+  //     .then((res) => {
+  //       console.log(res);
+  //     })
+  //     .catch((err) => console.log(err));
+  //   console.log(products);
+  // }
   //handle input changes
   const handleInputChange = (index, event) => {
     const { name, value } = event.target;
     const updatedProducts = [...products];
     updatedProducts[index][name] = value;
     setProducts(updatedProducts);
+
     calculateTotal(updatedProducts);
   };
   //handle print
@@ -102,7 +134,12 @@ const NewBilling = () => {
 
         <Table striped border hover style={{ marginLeft: 20 }} ref={tableRef}>
           <thead>
-            <tr>Bill Details</tr>
+            <tr>
+              <th></th>
+              <th style={{ color: "Blue" }}>Bill Details</th>
+              <th>Date: {currentDate}</th>
+            </tr>
+
             <tr>
               <th style={{ color: "Red" }}>Product Name</th>
               <th style={{ color: "Red" }}>Price</th>

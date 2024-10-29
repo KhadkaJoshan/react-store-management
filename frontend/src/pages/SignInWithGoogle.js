@@ -15,7 +15,7 @@ const LoginButton = () => {
       }}
     >
       <h1 style={{ color: "green" }}>Welcome to Inventory Management System</h1>
-      <button onClick={() => loginWithRedirect()}>Log In</button>;
+      <button onClick={() => loginWithRedirect()}>Log In</button>
     </div>
   );
 };

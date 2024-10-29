@@ -5,11 +5,22 @@ import Button from "react-bootstrap/Button";
 import LogoutButton from "./logout";
 
 const Layout = () => {
+  function getDate() {
+    const today = new Date();
+    const month = today.getMonth() + 1;
+    const year = today.getFullYear();
+    const date = today.getDate();
+    return `${month}/${date}/${year}`;
+  }
+  const currentDate = getDate();
   return (
     <div>
       <h1 style={{ textAlign: "center", color: "Green" }}>
         Inventory Management System
       </h1>
+      <p style={{ textAlign: "center", color: "red", fontWeight: "bold" }}>
+        {currentDate}
+      </p>
 
       <nav>
         <ul
@@ -21,7 +32,7 @@ const Layout = () => {
         >
           <li style={{ margin: 15 }}>
             <Link to="/viewproducts">
-              <Button variant="success">View Products</Button>
+              <Button variant="primary">View Products</Button>
             </Link>
           </li>
 
@@ -32,7 +43,12 @@ const Layout = () => {
           </li> */}
           <li style={{ margin: 15 }}>
             <Link to="/newbilling">
-              <Button variant="success">Billing</Button>
+              <Button variant="primary">Billing</Button>
+            </Link>
+          </li>
+          <li style={{ margin: 15 }}>
+            <Link to="/sales">
+              <Button variant="primary">Sales Report</Button>
             </Link>
           </li>
         </ul>
