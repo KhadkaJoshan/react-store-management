@@ -20,14 +20,14 @@ const NewBilling = () => {
   const currentDate = getDate();
 
   const [products, setProducts] = useState([
-    { Name: "", Price: 0, Quantity: 0 },
+    { Name: "", Price: 0, Quantity: 0, Total: 0 },
   ]);
   const [productName, setProductName] = React.useState([]);
   const tableRef = useRef();
   const { user, isAuthenticated } = useAuth0();
   //add new empty row
   const addRow = () => {
-    setProducts([...products, { Name: "", Price: 0, Quantity: 0 }]);
+    setProducts([...products, { Name: "", Price: 0, Quantity: 0, Total: 0 }]);
   };
   const [localUserId, setLocalUserId] = useState([{}]);
   const localID = localUserId[0].ID;
@@ -71,10 +71,7 @@ const NewBilling = () => {
       })
       .catch((err) => console.log(err));
     axios
-      .post(
-        "http://localhost:8081/addSales/" + localID + "/" + totalPrice,
-        products
-      )
+      .post("http://localhost:8081/addSales/" + localID, products)
       .then((res) => {
         console.log(res);
       })
@@ -93,14 +90,17 @@ const NewBilling = () => {
   //   console.log(products);
   // }
   //handle input changes
+
   const handleInputChange = (index, event) => {
     const { name, value } = event.target;
     const updatedProducts = [...products];
     updatedProducts[index][name] = value;
     setProducts(updatedProducts);
-
     calculateTotal(updatedProducts);
+
+    console.log(updatedProducts);
   };
+
   //handle print
   const handlePrint = useReactToPrint({
     content: () => tableRef.current,
@@ -144,52 +144,66 @@ const NewBilling = () => {
               <th style={{ color: "Red" }}>Product Name</th>
               <th style={{ color: "Red" }}>Price</th>
               <th style={{ color: "Red" }}>Quantity</th>
+              <th style={{ color: "Red" }}>Total</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((product, index) => (
-              <tr key={index}>
-                <td>
-                  <input
-                    list="suggestion"
-                    type="text"
-                    name="Name"
-                    value={product.Name}
-                    onSelect={getProductNames}
-                    onChange={(e) => handleInputChange(index, e)}
-                    placeholder="Enter product name"
-                  />
-                  <datalist id="suggestion">
-                    {productName.map((make, index) => {
-                      //Parsing the array and displaying suggestion with option tag
-                      return (
-                        <option key={index} value={make}>
-                          {make}
-                        </option>
-                      );
-                    })}
-                  </datalist>
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    name="Price"
-                    value={product.Price}
-                    onChange={(e) => handleInputChange(index, e)}
-                    placeholder="Enter price"
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    name="Quantity"
-                    value={product.Quantity}
-                    onChange={(e) => handleInputChange(index, e)}
-                    placeholder="Enter quantity"
-                  />
-                </td>
-              </tr>
-            ))}
+            {products.map((product, index) => {
+              const Price = parseFloat(product.Price);
+              const Quantity = parseFloat(product.Quantity);
+              product.Total = Price * Quantity;
+              return (
+                <tr key={index}>
+                  <td>
+                    <input
+                      list="suggestion"
+                      type="text"
+                      name="Name"
+                      value={product.Name}
+                      onSelect={getProductNames}
+                      onChange={(e) => handleInputChange(index, e)}
+                      placeholder="Enter product name"
+                    />
+                    <datalist id="suggestion">
+                      {productName.map((make, index) => {
+                        //Parsing the array and displaying suggestion with option tag
+                        return (
+                          <option key={index} value={make}>
+                            {make}
+                          </option>
+                        );
+                      })}
+                    </datalist>
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      name="Price"
+                      value={product.Price}
+                      onChange={(e) => handleInputChange(index, e)}
+                      placeholder="Enter price"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      name="Quantity"
+                      value={product.Quantity}
+                      onChange={(e) => handleInputChange(index, e)}
+                      placeholder="Enter quantity"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      name="Total"
+                      value={product.Total}
+                      readOnly
+                    />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </Table>
         <div style={{ alignSelf: "end" }}>

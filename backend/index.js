@@ -191,10 +191,10 @@ app.post("/check-user", (req, res) => {
   });
 });
 //add sales
-app.post("/addSales/:ID/:STotal", (req, res) => {
+app.post("/addSales/:ID", (req, res) => {
   const salesData = req.body; // Expecting an array of objects with name, price, and quantity
   const ID = req.params.ID;
-  Stotal = req.params.STotal;
+
   // Convert received data to a format suitable for bulk insert
   const values = salesData.map((sale) => [
     sale.Name,
@@ -202,8 +202,9 @@ app.post("/addSales/:ID/:STotal", (req, res) => {
     sale.Quantity,
     ID,
     currentDate,
-    Stotal,
+    sale.Total,
   ]);
+  console.log(values);
 
   const sql =
     "INSERT INTO sales (SName, SPrice, SQuantity,user_id,DOS,Stotal) VALUES ?";
