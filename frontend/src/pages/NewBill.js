@@ -127,7 +127,7 @@ const NewBilling = () => {
           marginRight: "auto",
         }}
       >
-        <h2 style={{ color: "green" }}>Billing</h2>
+        <h2 style={{ color: "RoyalBlue", fontFamily: "fantasy" }}>Billing</h2>
         <h5 style={{ alignSelf: "start" }}>{user.name}</h5>
         <p style={{ alignSelf: "start" }}>{user.email}</p>
         {/* <LogoutButton /> */}

@@ -187,8 +187,8 @@ function ShowAllProducts() {
         <h1
           style={{
             textAlign: "center",
-            color: "red",
-            fontFamily: "monospace",
+            color: "RoyalBlue",
+            fontFamily: "fantasy",
             fontStyle: "normal",
           }}
         >
