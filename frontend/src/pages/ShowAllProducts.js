@@ -1,17 +1,11 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import "../App.css";
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-quartz.css";
-import { AgGridReact } from "ag-grid-react";
-import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
-import { ModuleRegistry } from "@ag-grid-community/core";
 import { useAuth } from "../context/AuthContext";
 import { useApi, getBackendHealthUrl } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import StatCard from "../components/StatCard";
 import AddProductModal from "../components/AddProductModal";
-
-ModuleRegistry.registerModules([ClientSideRowModelModule]);
+import ResponsiveDataTable from "../components/ResponsiveDataTable";
 
 function ShowAllProducts() {
   const { isAuthenticated, isLoading, error } = useAuth();
@@ -21,6 +15,7 @@ function ShowAllProducts() {
   const [fetchError, setFetchError] = useState("");
   const [isFetching, setIsFetching] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState(null);
 
   const api = useApi();
   const toast = useToast();
@@ -87,56 +82,47 @@ function ShowAllProducts() {
     );
   }, [products, searchTerm]);
 
-  // Column Definitions
-  const colDefs = [
+  // Table Column Definitions
+  const columns = [
     {
-      field: "ID",
-      headerName: "SKU / ID",
-      flex: 1,
-      minWidth: 90,
-      filter: true,
-      sort: ["desc"],
-      cellRenderer: (params) => (
+      key: "ID",
+      label: "SKU / ID",
+      width: "110px",
+      sortable: true,
+      render: (val) => (
         <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>
-          #{params.value}
+          #{val}
         </span>
       ),
     },
     {
-      field: "Name",
-      headerName: "Product Name",
-      flex: 3,
-      minWidth: 180,
-      filter: true,
-      editable: true,
-      cellRenderer: (params) => (
+      key: "Name",
+      label: "Product Name",
+      sortable: true,
+      render: (val) => (
         <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
-          {params.value}
+          {val}
         </span>
       ),
     },
     {
-      field: "Price",
-      headerName: "Unit Price",
-      flex: 2,
-      minWidth: 120,
-      filter: true,
-      editable: true,
-      cellRenderer: (params) => (
-        <span style={{ fontWeight: 600, color: "var(--primary)" }}>
-          NRs. {Number(params.value || 0).toFixed(2)}
+      key: "Price",
+      label: "Unit Price",
+      width: "160px",
+      sortable: true,
+      render: (val) => (
+        <span style={{ fontWeight: 700, color: "var(--primary)" }}>
+          NRs. {Number(val || 0).toFixed(2)}
         </span>
       ),
     },
     {
-      field: "Quantity",
-      headerName: "Stock Status",
-      flex: 2,
-      minWidth: 140,
-      filter: true,
-      editable: true,
-      cellRenderer: (params) => {
-        const qty = Number(params.value) || 0;
+      key: "Quantity",
+      label: "Stock Status",
+      width: "180px",
+      sortable: true,
+      render: (val) => {
+        const qty = Number(val) || 0;
         let badgeClass = "badge-in-stock";
         let label = `${qty} in stock`;
 
@@ -153,36 +139,19 @@ function ShowAllProducts() {
     },
   ];
 
-  // Update product inline cell value
-  const onCellValueChanged = (e) => {
-    const ID = e.data.ID;
-    const values = e.data;
-
-    api
-      .put("/update/" + ID, values)
-      .then(() => {
-        toast.success(`Updated "${e.data.Name}" successfully!`);
-      })
-      .catch((err) => {
-        const errorMsg =
-          err.response?.data?.details?.[0]?.message ||
-          err.response?.data?.error ||
-          "Failed to update product";
-        toast.error(errorMsg);
-        fetchProducts(); // Revert to server state
-      });
-  };
-
-  // Delete product
-  const deleteProduct = () => {
-    if (!selectedRowID) return;
+  // Delete product handler (accepts optional specific ID or currently selected row)
+  const deleteProduct = (idToDelete) => {
+    const targetId = idToDelete || selectedRowID;
+    if (!targetId) return;
     if (!window.confirm("Are you sure you want to delete this product?")) return;
 
     api
-      .delete("/delete/" + selectedRowID)
+      .delete("/delete/" + targetId)
       .then(() => {
         toast.success("Product deleted successfully!");
-        setSelectedRowID("");
+        if (selectedRowID === targetId) {
+          setSelectedRowID("");
+        }
         fetchProducts();
       })
       .catch((err) => {
@@ -256,45 +225,35 @@ function ShowAllProducts() {
           >
             <div
               style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "12px",
+                width: "64px",
+                height: "64px",
                 background: "#eef2ff",
                 color: "var(--primary)",
+                borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "1.5rem",
-                margin: "0 auto 1.25rem auto",
+                fontSize: "1.75rem",
+                margin: "0 auto 1.25rem",
               }}
             >
-              <i className="fa fa-lock"></i>
+              <i className="fa fa-boxes-stacked"></i>
             </div>
-            <h3
-              style={{
-                marginBottom: "0.5rem",
-                color: "var(--text-main)",
-                fontSize: "1.3rem",
-              }}
-            >
-              Session Not Authenticated
+            <h3 style={{ fontWeight: 800, marginBottom: "0.5rem" }}>
+              StoreFlow Inventory
             </h3>
             <p
               style={{
                 color: "var(--text-muted)",
                 fontSize: "0.95rem",
-                marginBottom: "1.75rem",
+                marginBottom: "1.5rem",
               }}
             >
-              Please sign in with your verified account to access your inventory and POS terminal.
+              Sign in to manage your inventory catalog, monitor stock thresholds, and record sales in real time.
             </p>
-            <button
-              onClick={() => (window.location.href = "/")}
-              className="btn-modern btn-primary-modern"
-              style={{ width: "100%", padding: "0.75rem 1.25rem" }}
-            >
-              <i className="fa fa-arrow-left"></i> Return to Sign In
-            </button>
+            <a href="/" className="btn-modern btn-primary-modern" style={{ display: "inline-flex" }}>
+              <i className="fa fa-arrow-right-to-bracket"></i> Sign In to StoreFlow
+            </a>
           </div>
         )}
       </div>
@@ -302,22 +261,25 @@ function ShowAllProducts() {
   }
 
   return (
-    <div>
+    <div className="main-content">
       {/* Page Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">
             <i className="fa fa-boxes-stacked" style={{ color: "var(--primary)" }}></i>
-            Product Catalog
+            Products & Inventory
           </h1>
           <p className="page-subtitle">
-            Manage your store items, monitor stock levels, and update prices in real time.
+            Manage your store&apos;s product catalog, live stock status, and pricing.
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
           <button
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              setProductToEdit(null);
+              setIsAddModalOpen(true);
+            }}
             className="btn-modern btn-primary-modern"
           >
             <i className="fa fa-plus"></i> Add Product
@@ -332,7 +294,7 @@ function ShowAllProducts() {
             <span>{isFetching ? "Refreshing..." : "Refresh"}</span>
           </button>
           <button
-            onClick={deleteProduct}
+            onClick={() => deleteProduct()}
             className="btn-modern btn-danger-modern"
             disabled={!selectedRowID}
             title="Delete Selected Item"
@@ -368,7 +330,7 @@ function ShowAllProducts() {
         <StatCard
           title="Low Stock Alerts"
           value={stats.lowStockCount}
-          subtitle="Items with &le; 5 units"
+          subtitle="Items with ≤ 5 units"
           icon="fa-triangle-exclamation"
           color={stats.lowStockCount > 0 ? "amber" : "indigo"}
         />
@@ -433,9 +395,6 @@ function ShowAllProducts() {
                           <i className="fa fa-shield-halved"></i>
                           1-Click Authorize Backend Certificate ({getBackendHealthUrl()})
                         </a>
-                        <span style={{ fontSize: "0.8rem", marginLeft: "0.75rem", color: "#9f1239" }}>
-                          (In Safari, click &quot;Show Details&quot; &rarr; &quot;visit this website&quot;, then return here)
-                        </span>
                       </div>
                     </div>
                   )}
@@ -453,7 +412,7 @@ function ShowAllProducts() {
         </div>
       )}
 
-      {/* Search Bar & Grid Controls */}
+      {/* Search Bar & Stats */}
       <div className="action-bar">
         <div className="search-input-wrapper">
           <i className="fa fa-search"></i>
@@ -464,6 +423,22 @@ function ShowAllProducts() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                padding: "0 0.5rem",
+              }}
+              title="Clear search"
+            >
+              <i className="fa fa-times-circle"></i>
+            </button>
+          )}
         </div>
 
         <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
@@ -472,28 +447,83 @@ function ShowAllProducts() {
         </div>
       </div>
 
-      {/* Data Grid */}
-      <div className="ag-theme-quartz" style={{ height: 480, width: "100%" }}>
-        <AgGridReact
-          rowSelection="single"
-          rowData={filteredProducts}
-          columnDefs={colDefs}
-          pagination={true}
-          paginationPageSize={10}
-          paginationPageSizeSelector={[10, 25, 50, 100]}
-          onCellValueChanged={onCellValueChanged}
-          onRowSelected={(event) => {
-            if (event.node.isSelected()) {
-              setSelectedRowID(event.data.ID);
-            }
-          }}
-        />
-      </div>
+      {/* Responsive Custom SaaS Data Table (Replaced AG Grid) */}
+      <ResponsiveDataTable
+        columns={columns}
+        data={filteredProducts}
+        keyField="ID"
+        selectedId={selectedRowID}
+        onSelect={(product) => setSelectedRowID(product.ID)}
+        exportFileName="StoreFlow-Products"
+        emptyTitle="No products found"
+        emptyMessage={
+          searchTerm
+            ? `No products matched "${searchTerm}". Try clearing your search filter.`
+            : "Your inventory is currently empty. Click 'Add Product' above to create your first item!"
+        }
+        renderMobileHeader={(p) => {
+          const qty = Number(p.Quantity) || 0;
+          let badgeClass = "badge-in-stock";
+          let label = `${qty} in stock`;
+          if (qty <= 0) {
+            badgeClass = "badge-out-stock";
+            label = `Out of stock`;
+          } else if (qty <= 5) {
+            badgeClass = "badge-low-stock";
+            label = `Low stock (${qty})`;
+          }
+          return {
+            title: p.Name,
+            subtitle: `SKU #${p.ID}`,
+            badge: <span className={`badge-status ${badgeClass}`}>{label}</span>,
+          };
+        }}
+        renderActions={(row) => (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: "0.4rem",
+            }}
+          >
+            <button
+              type="button"
+              className="btn-modern btn-secondary-modern"
+              style={{ padding: "0.3rem 0.65rem", fontSize: "0.8rem" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setProductToEdit(row);
+                setIsAddModalOpen(true);
+              }}
+              title="Edit Product"
+            >
+              <i className="fa fa-pen-to-square"></i> Edit
+            </button>
+            <button
+              type="button"
+              className="btn-modern btn-danger-modern"
+              style={{ padding: "0.3rem 0.65rem", fontSize: "0.8rem" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteProduct(row.ID);
+              }}
+              title="Delete Product"
+            >
+              <i className="fa fa-trash-alt"></i>
+            </button>
+          </div>
+        )}
+      />
 
-      {/* Add Product Modal */}
+      {/* Add / Edit Product Modal */}
       <AddProductModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        productToEdit={productToEdit}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setProductToEdit(null);
+        }}
         onProductAdded={fetchProducts}
       />
     </div>

@@ -208,25 +208,7 @@
   color: #b91c1c;
 }
 
-/* AG-Grid Theme Modernization */
-.ag-theme-quartz {
-  --ag-border-radius: 12px;
-  --ag-header-background-color: #f8fafc;
-  --ag-header-foreground-color: #475569;
-  --ag-header-font-weight: 700;
-  --ag-header-font-size: 13px;
-  --ag-header-cell-hover-background-color: #f1f5f9;
-  --ag-row-hover-color: #f8fafc;
-  --ag-selected-row-background-color: #eef2ff;
-  --ag-font-family: var(--font-sans);
-  --ag-font-size: 14px;
-  --ag-border-color: #e2e8f0;
-}
 
-.ag-theme-quartz .ag-root-wrapper {
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
 
 /* Badges */
 .badge-status {

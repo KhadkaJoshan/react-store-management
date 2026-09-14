@@ -1,16 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import "../App.css";
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-quartz.css";
-import { AgGridReact } from "ag-grid-react";
-import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
-import { ModuleRegistry } from "@ag-grid-community/core";
 import { useAuth } from "../context/AuthContext";
 import { useApi, getBackendHealthUrl } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import StatCard from "../components/StatCard";
-
-ModuleRegistry.registerModules([ClientSideRowModelModule]);
+import ResponsiveDataTable from "../components/ResponsiveDataTable";
 
 function Sales() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -93,50 +87,44 @@ function Sales() {
     );
   }, [sales, searchTerm]);
 
-  // Column Definitions
-  const colDefs = [
+  // Table Column Definitions
+  const columns = [
     {
-      field: "SalesID",
-      headerName: "Receipt #",
-      flex: 1,
-      minWidth: 100,
-      filter: true,
-      sort: ["desc"],
-      cellRenderer: (params) => (
+      key: "SalesID",
+      label: "Receipt #",
+      width: "110px",
+      sortable: true,
+      render: (val) => (
         <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>
-          #{params.value}
+          #{val}
         </span>
       ),
     },
     {
-      field: "SName",
-      headerName: "Product Sold",
-      flex: 3,
-      minWidth: 180,
-      filter: true,
-      cellRenderer: (params) => (
+      key: "SName",
+      label: "Product Sold",
+      sortable: true,
+      render: (val) => (
         <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
-          {params.value}
+          {val}
         </span>
       ),
     },
     {
-      field: "SPrice",
-      headerName: "Unit Price",
-      flex: 2,
-      minWidth: 110,
-      filter: true,
-      cellRenderer: (params) => (
-        <span>NRs. {Number(params.value || 0).toFixed(2)}</span>
+      key: "SPrice",
+      label: "Unit Price",
+      width: "140px",
+      sortable: true,
+      render: (val) => (
+        <span>NRs. {Number(val || 0).toFixed(2)}</span>
       ),
     },
     {
-      field: "SQuantity",
-      headerName: "Quantity Sold",
-      flex: 2,
-      minWidth: 130,
-      filter: true,
-      cellRenderer: (params) => (
+      key: "SQuantity",
+      label: "Quantity Sold",
+      width: "150px",
+      sortable: true,
+      render: (val) => (
         <span
           style={{
             background: "#eef2ff",
@@ -147,33 +135,31 @@ function Sales() {
             fontSize: "0.85rem",
           }}
         >
-          {params.value} units
+          {val} units
         </span>
       ),
     },
     {
-      field: "DOS",
-      headerName: "Date of Sale",
-      flex: 2,
-      minWidth: 130,
-      filter: true,
-      cellRenderer: (params) => (
+      key: "DOS",
+      label: "Date of Sale",
+      width: "160px",
+      sortable: true,
+      render: (val) => (
         <span style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
           <i
             className="fa fa-calendar-alt"
             style={{ marginRight: "0.4rem", color: "var(--text-light)" }}
           ></i>
-          {params.value}
+          {val}
         </span>
       ),
     },
     {
-      field: "Stotal",
-      headerName: "Total Amount",
-      flex: 2,
-      minWidth: 130,
-      filter: true,
-      cellRenderer: (params) => (
+      key: "Stotal",
+      label: "Total Amount",
+      width: "160px",
+      sortable: true,
+      render: (val) => (
         <span
           style={{
             fontWeight: 700,
@@ -181,7 +167,7 @@ function Sales() {
             fontSize: "0.95rem",
           }}
         >
-          NRs. {Number(params.value || 0).toFixed(2)}
+          NRs. {Number(val || 0).toFixed(2)}
         </span>
       ),
     },
@@ -208,27 +194,31 @@ function Sales() {
   }
 
   return (
-    <div>
+    <div className="main-content">
       {/* Page Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">
-            <i className="fa fa-chart-line" style={{ color: "var(--primary)" }}></i>
-            Sales Analytics &amp; Reports
+            <i
+              className="fa fa-chart-line"
+              style={{ color: "var(--primary)" }}
+            ></i>
+            Sales & Revenue Analytics
           </h1>
           <p className="page-subtitle">
-            Historical transaction log, revenue totals, and sales performance summary.
+            Track checkout transactions, aggregate sales revenues, and customer purchase trends.
           </p>
         </div>
 
-        <div>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
           <button
             onClick={fetchSales}
             className="btn-modern btn-secondary-modern"
             disabled={isFetching}
+            title="Refresh Sales Data"
           >
             <i className={`fa fa-sync-alt ${isFetching ? "fa-spin" : ""}`}></i>
-            <span>{isFetching ? "Refreshing..." : "Refresh Report"}</span>
+            <span>{isFetching ? "Refreshing..." : "Refresh"}</span>
           </button>
         </div>
       </div>
@@ -236,18 +226,18 @@ function Sales() {
       {/* KPI Stats Grid */}
       <div className="stat-grid">
         <StatCard
-          title="Total Gross Revenue"
-          value={`NRs. ${stats.totalRevenue}`}
-          subtitle="All completed transactions"
-          icon="fa-money-bill-wave"
-          color="emerald"
-        />
-        <StatCard
-          title="Transactions"
+          title="Total Transactions"
           value={stats.totalTransactions}
-          subtitle="Receipts recorded"
+          subtitle="Completed customer orders"
           icon="fa-receipt"
           color="indigo"
+        />
+        <StatCard
+          title="Total Revenue"
+          value={`NRs. ${stats.totalRevenue}`}
+          subtitle="Cumulative sales earnings"
+          icon="fa-sack-dollar"
+          color="emerald"
         />
         <StatCard
           title="Total Units Sold"
@@ -341,7 +331,7 @@ function Sales() {
         </div>
       )}
 
-      {/* Search Bar & Grid Controls */}
+      {/* Search Bar & Stats */}
       <div className="action-bar">
         <div className="search-input-wrapper">
           <i className="fa fa-search"></i>
@@ -352,6 +342,22 @@ function Sales() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                padding: "0 0.5rem",
+              }}
+              title="Clear search"
+            >
+              <i className="fa fa-times-circle"></i>
+            </button>
+          )}
         </div>
 
         <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
@@ -360,17 +366,34 @@ function Sales() {
         </div>
       </div>
 
-      {/* Data Grid */}
-      <div className="ag-theme-quartz" style={{ height: 480, width: "100%" }}>
-        <AgGridReact
-          rowSelection="single"
-          rowData={filteredSales}
-          columnDefs={colDefs}
-          pagination={true}
-          paginationPageSize={10}
-          paginationPageSizeSelector={[10, 25, 50, 100]}
-        />
-      </div>
+      {/* Responsive Custom SaaS Data Table (Replaced AG Grid) */}
+      <ResponsiveDataTable
+        columns={columns}
+        data={filteredSales}
+        keyField="SalesID"
+        exportFileName="StoreFlow-Sales"
+        emptyTitle="No sales recorded"
+        emptyMessage={
+          searchTerm
+            ? `No sales matched "${searchTerm}". Try clearing your search filter.`
+            : "No sales records yet. Complete your first checkout in 'New Bill' to record a sale!"
+        }
+        renderMobileHeader={(s) => ({
+          title: s.SName,
+          subtitle: `Receipt #${s.SalesID} • ${s.DOS}`,
+          badge: (
+            <span
+              style={{
+                fontWeight: 700,
+                color: "var(--success)",
+                fontSize: "1rem",
+              }}
+            >
+              NRs. {Number(s.Stotal || 0).toFixed(2)}
+            </span>
+          ),
+        })}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useApi, getBackendHealthUrl } from "../services/api";
 import { useToast } from "../context/ToastContext";
 
-const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
+const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null }) => {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -11,7 +11,22 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
   const api = useApi();
   const toast = useToast();
 
+  React.useEffect(() => {
+    if (productToEdit) {
+      setName(productToEdit.Name || "");
+      setPrice(productToEdit.Price !== undefined ? String(productToEdit.Price) : "");
+      setQuantity(productToEdit.Quantity !== undefined ? String(productToEdit.Quantity) : "");
+    } else {
+      setName("");
+      setPrice("");
+      setQuantity("");
+    }
+    setError("");
+  }, [productToEdit, isOpen]);
+
   if (!isOpen) return null;
+
+  const isEditMode = !!productToEdit;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,13 +51,22 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
 
     setIsSubmitting(true);
     try {
-      await api.post("/addproducts", {
-        Name: name.trim(),
-        Price: parsedPrice,
-        Quantity: parsedQty,
-      });
+      if (isEditMode) {
+        await api.put("/update/" + productToEdit.ID, {
+          Name: name.trim(),
+          Price: parsedPrice,
+          Quantity: parsedQty,
+        });
+        toast.success(`Product "${name.trim()}" updated successfully!`);
+      } else {
+        await api.post("/addproducts", {
+          Name: name.trim(),
+          Price: parsedPrice,
+          Quantity: parsedQty,
+        });
+        toast.success(`Product "${name.trim()}" added successfully!`);
+      }
 
-      toast.success(`Product "${name.trim()}" added successfully!`);
       setName("");
       setPrice("");
       setQuantity("");
@@ -58,7 +82,7 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
         serverErr =
           "Network Error: Unable to reach backend server. Please ensure backend SSL certificate is authorized.";
       } else if (!serverErr) {
-        serverErr = err.message || "Failed to add product.";
+        serverErr = err.message || (isEditMode ? "Failed to update product." : "Failed to add product.");
       }
       setError(serverErr);
       toast.error(serverErr);
@@ -73,10 +97,10 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
         <div className="modal-header">
           <div className="modal-title">
             <i
-              className="fa fa-box-open"
+              className={`fa ${isEditMode ? "fa-pen-to-square" : "fa-box-open"}`}
               style={{ color: "var(--primary)", marginRight: "0.5rem" }}
             ></i>
-            Add New Product
+            {isEditMode ? "Edit Product" : "Add New Product"}
           </div>
           <button
             onClick={onClose}
@@ -193,11 +217,12 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
             >
               {isSubmitting ? (
                 <>
-                  <i className="fa fa-spinner fa-spin"></i> Saving...
+                  <i className="fa fa-spinner fa-spin"></i> {isEditMode ? "Updating..." : "Saving..."}
                 </>
               ) : (
                 <>
-                  <i className="fa fa-plus"></i> Save Product
+                  <i className={`fa ${isEditMode ? "fa-check" : "fa-plus"}`}></i>{" "}
+                  {isEditMode ? "Update Product" : "Save Product"}
                 </>
               )}
             </button>
