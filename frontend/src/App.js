@@ -11,24 +11,24 @@ import SignInWithGoogle from "./pages/SignInWithGoogle";
 import LogoutButton from "./pages/logout";
 import Sales from "./pages/Sales";
 
+import { ToastProvider } from "./context/ToastContext";
+
 function App() {
-  // const [state, setState] = useState(false);
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route index element={<SignInWithGoogle />} />
-        <Route path="/" element={<Layout />}>
-          <Route path="viewproducts" element={<ShowAllProducts />} />
-
-          <Route path="newbilling" element={<NewBilling />} />
-
-          <Route path="sales" element={<Sales />} />
-          <Route path="logout" element={<LogoutButton />} />
-
-          <Route path="*" element={<NoPage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route index element={<SignInWithGoogle />} />
+          <Route path="/" element={<Layout />}>
+            <Route path="viewproducts" element={<ShowAllProducts />} />
+            <Route path="newbilling" element={<NewBilling />} />
+            <Route path="sales" element={<Sales />} />
+            <Route path="logout" element={<LogoutButton />} />
+            <Route path="*" element={<NoPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }
 

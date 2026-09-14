@@ -1,63 +1,31 @@
 import React from "react";
-import { Outlet, Link } from "react-router-dom";
-import "bootstrap/dist/css/bootstrap.css";
-import Button from "react-bootstrap/Button";
-import LogoutButton from "./logout";
+import { Outlet } from "react-router-dom";
+import Navbar from "../components/Navbar";
 
 const Layout = () => {
-  function getDate() {
-    const today = new Date();
-    const month = today.getMonth() + 1;
-    const year = today.getFullYear();
-    const date = today.getDate();
-    return `${month}/${date}/${year}`;
-  }
-  const currentDate = getDate();
   return (
-    <div>
-      <h1 style={{ textAlign: "center", color: "Green" }}>
-        Inventory Management System
-      </h1>
-      <p style={{ textAlign: "center", color: "red", fontWeight: "bold" }}>
-        {currentDate}
-      </p>
-
-      <nav>
-        <ul
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            listStyle: "none",
-          }}
-        >
-          <li style={{ margin: 15 }}>
-            <Link to="/viewproducts">
-              <Button variant="primary">View Products</Button>
-            </Link>
-          </li>
-
-          {/* <li style={{ margin: 15 }}>
-            <Link to="/addproducts">
-              <Button variant="success">Add Products</Button>
-            </Link>
-          </li> */}
-          <li style={{ margin: 15 }}>
-            <Link to="/newbilling">
-              <Button variant="primary">Billing</Button>
-            </Link>
-          </li>
-          <li style={{ margin: 15 }}>
-            <Link to="/sales">
-              <Button variant="primary">Sales Report</Button>
-            </Link>
-          </li>
-        </ul>
-        <div style={{ textAlign: "right", marginRight: 300 }}>
-          <LogoutButton />
+    <div className="app-container">
+      <Navbar />
+      <main className="main-content">
+        <Outlet />
+      </main>
+      <footer
+        style={{
+          borderTop: "1px solid var(--border)",
+          background: "#ffffff",
+          padding: "1.25rem 1.5rem",
+          textAlign: "center",
+          color: "var(--text-muted)",
+          fontSize: "0.85rem",
+          marginTop: "auto",
+        }}
+      >
+        <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+          &copy; {new Date().getFullYear()}{" "}
+          <strong style={{ color: "var(--text-main)" }}>StoreFlow</strong> &mdash; Modern
+          Inventory Management & POS Solution.
         </div>
-      </nav>
-
-      <Outlet />
+      </footer>
     </div>
   );
 };

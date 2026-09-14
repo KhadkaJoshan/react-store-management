@@ -1,225 +1,477 @@
-import axios from "axios";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useReactToPrint } from "react-to-print";
-import Table from "react-bootstrap/Table";
-import "bootstrap/dist/css/bootstrap.css";
-import Button from "react-bootstrap/Button";
-// import LogoutButton from "./logout";
-
 import { useAuth0 } from "@auth0/auth0-react";
+import { useApi } from "../services/api";
+import { useToast } from "../context/ToastContext";
 
 const NewBilling = () => {
-  //current Date
-  function getDate() {
-    const today = new Date();
-    const month = today.getMonth() + 1;
-    const year = today.getFullYear();
-    const date = today.getDate();
-    return `${month}/${date}/${year}`;
-  }
-  const currentDate = getDate();
-
-  const [products, setProducts] = useState([
-    { Name: "", Price: 0, Quantity: 0, Total: 0 },
+  const [items, setItems] = useState([
+    { Name: "", Price: 0, Quantity: 1, Total: 0 },
   ]);
-  const [productName, setProductName] = React.useState([]);
+  const [catalog, setCatalog] = useState([]);
+  const [invoiceNumber] = useState(
+    () => `INV-${Date.now().toString().slice(-6)}`
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const tableRef = useRef();
-  const { user, isAuthenticated } = useAuth0();
-  //add new empty row
-  const addRow = () => {
-    setProducts([...products, { Name: "", Price: 0, Quantity: 0, Total: 0 }]);
-  };
-  const [localUserId, setLocalUserId] = useState([{}]);
-  const localID = localUserId[0].ID;
-  const [totalPrice, setTotalPrice] = useState(0);
-  //get userID
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      axios
-        .post("http://localhost:8081/getusers", { Email: user.email })
-        .then((res) => {
-          setLocalUserId(res.data);
-          console.log(localID);
-        })
-        .catch((err) => console.log(err));
+  const { user, isAuthenticated, isLoading } = useAuth0();
+  const api = useApi();
+  const toast = useToast();
+
+  const currentDate = new Date().toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+  // Fetch product catalog for auto-fill
+  const fetchCatalog = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const response = await api.get("/products");
+      setCatalog(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      console.error("Error fetching catalog for billing:", err);
     }
-  }, [user, isAuthenticated, localID]);
-  //get Product names from database
-  async function getProductNames() {
-    await axios
-      .get("http://localhost:8081/products/" + localID)
-      .then((response) => {
-        let data = response.data;
+  }, [api, isAuthenticated]);
 
-        let finalArray = [];
-        //Storing values in the form of array as response will be in the form of objects
-        finalArray = data.map(function (obj) {
-          return obj.Name;
-        });
-        console.log(finalArray);
-        setProductName([...finalArray]);
-      });
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchCatalog();
+    }
+  }, [isAuthenticated, fetchCatalog]);
 
-  //update after billing
-  function handleSubmit(e) {
-    e.preventDefault();
-    axios
-      .put("http://localhost:8081/updateAfterBill/", products)
-      .then((res) => {
-        console.log(res);
-      })
-      .catch((err) => console.log(err));
-    axios
-      .post("http://localhost:8081/addSales/" + localID, products)
-      .then((res) => {
-        console.log(res);
-      })
-      .catch((err) => console.log(err));
-
-    window.location.reload();
-  }
-  // //add sales
-  // function addSales() {
-  //   axios
-  //     .post("http://localhost:8081/addSales/" + localID, products)
-  //     .then((res) => {
-  //       console.log(res);
-  //     })
-  //     .catch((err) => console.log(err));
-  //   console.log(products);
-  // }
-  //handle input changes
-
-  const handleInputChange = (index, event) => {
-    const { name, value } = event.target;
-    const updatedProducts = [...products];
-    updatedProducts[index][name] = value;
-    setProducts(updatedProducts);
-    calculateTotal(updatedProducts);
-
-    console.log(updatedProducts);
+  // Add new billing item row
+  const addRow = () => {
+    setItems((prev) => [...prev, { Name: "", Price: 0, Quantity: 1, Total: 0 }]);
   };
 
-  //handle print
+  // Remove billing item row
+  const removeRow = (index) => {
+    if (items.length <= 1) {
+      setItems([{ Name: "", Price: 0, Quantity: 1, Total: 0 }]);
+      return;
+    }
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Handle product name change and auto-fill price
+  const handleNameChange = (index, value) => {
+    const list = [...items];
+    list[index].Name = value;
+
+    // Check if entered name matches an item in catalog
+    const matched = catalog.find(
+      (c) => c.Name.trim().toLowerCase() === value.trim().toLowerCase()
+    );
+
+    if (matched) {
+      list[index].Price = Number(matched.Price) || 0;
+      list[index].Total = (Number(matched.Price) || 0) * (Number(list[index].Quantity) || 0);
+    } else {
+      list[index].Total = (Number(list[index].Price) || 0) * (Number(list[index].Quantity) || 0);
+    }
+
+    setItems(list);
+  };
+
+  // Handle price or quantity numeric changes
+  const handleFieldChange = (index, field, value) => {
+    const list = [...items];
+    const numVal = parseFloat(value) || 0;
+    list[index][field] = numVal;
+
+    const price = field === "Price" ? numVal : Number(list[index].Price) || 0;
+    const qty = field === "Quantity" ? numVal : Number(list[index].Quantity) || 0;
+    list[index].Total = price * qty;
+
+    setItems(list);
+  };
+
+  // Calculate bill total
+  const grandTotal = useMemo(() => {
+    return items.reduce((acc, item) => acc + (Number(item.Total) || 0), 0);
+  }, [items]);
+
+  // Submit bill and record sales
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Filter out rows with empty product name
+    const validItems = items.filter((item) => item.Name.trim() !== "");
+    if (validItems.length === 0) {
+      toast.warning("Please add at least one product with a valid name.");
+      return;
+    }
+
+    // Verify stock availability
+    for (const item of validItems) {
+      const match = catalog.find(
+        (c) => c.Name.trim().toLowerCase() === item.Name.trim().toLowerCase()
+      );
+      if (match && Number(item.Quantity) > Number(match.Quantity)) {
+        toast.warning(
+          `Warning: ${item.Name} quantity (${item.Quantity}) exceeds available stock (${match.Quantity}).`
+        );
+      }
+    }
+
+    setIsSubmitting(true);
+    try {
+      // 1. Decrement inventory stock atomically
+      await api.put("/updateAfterBill", validItems);
+
+      // 2. Record sales entries
+      await api.post("/addSales", validItems);
+
+      toast.success("Bill completed! Stock decremented and sales logged.");
+      setItems([{ Name: "", Price: 0, Quantity: 1, Total: 0 }]);
+      fetchCatalog(); // Refresh catalog stock counts
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.error || err.message || "Failed to process bill";
+      toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Print receipt function
   const handlePrint = useReactToPrint({
     content: () => tableRef.current,
-    documentTitle: "Products Table",
   });
-  //calculate total
-  const calculateTotal = (updatedRows) => {
-    const totalValue = updatedRows.reduce(
-      (acc, row) => acc + row.Price * row.Quantity,
-      0
+
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: "center", padding: "4rem 1rem" }}>
+        <i
+          className="fa fa-circle-notch fa-spin"
+          style={{ fontSize: "2rem", color: "var(--primary)", marginBottom: "1rem" }}
+        ></i>
+        <h4 style={{ color: "var(--text-muted)" }}>Loading billing terminal...</h4>
+      </div>
     );
-    setTotalPrice(totalValue);
-  };
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div style={{ textAlign: "center", padding: "4rem 1rem" }}>
+        <h3>Please log in to access the billing terminal.</h3>
+      </div>
+    );
+  }
 
   return (
-    isAuthenticated && (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          maxWidth: 800,
-          alignItems: "center",
-          marginLeft: "auto",
-          marginRight: "auto",
-        }}
-      >
-        <h2 style={{ color: "RoyalBlue", fontFamily: "fantasy" }}>Billing</h2>
-        <h5 style={{ alignSelf: "start" }}>{user.name}</h5>
-        <p style={{ alignSelf: "start" }}>{user.email}</p>
-        {/* <LogoutButton /> */}
-
-        <Table striped border hover style={{ marginLeft: 20 }} ref={tableRef}>
-          <thead>
-            <tr>
-              <th></th>
-              <th style={{ color: "Blue" }}>Bill Details</th>
-              <th>Date: {currentDate}</th>
-            </tr>
-
-            <tr>
-              <th style={{ color: "Red" }}>Product Name</th>
-              <th style={{ color: "Red" }}>Price</th>
-              <th style={{ color: "Red" }}>Quantity</th>
-              <th style={{ color: "Red" }}>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product, index) => {
-              const Price = parseFloat(product.Price);
-              const Quantity = parseFloat(product.Quantity);
-              product.Total = Price * Quantity;
-              return (
-                <tr key={index}>
-                  <td>
-                    <input
-                      list="suggestion"
-                      type="text"
-                      name="Name"
-                      value={product.Name}
-                      onSelect={getProductNames}
-                      onChange={(e) => handleInputChange(index, e)}
-                      placeholder="Enter product name"
-                    />
-                    <datalist id="suggestion">
-                      {productName.map((make, index) => {
-                        //Parsing the array and displaying suggestion with option tag
-                        return (
-                          <option key={index} value={make}>
-                            {make}
-                          </option>
-                        );
-                      })}
-                    </datalist>
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      name="Price"
-                      value={product.Price}
-                      onChange={(e) => handleInputChange(index, e)}
-                      placeholder="Enter price"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      name="Quantity"
-                      value={product.Quantity}
-                      onChange={(e) => handleInputChange(index, e)}
-                      placeholder="Enter quantity"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      name="Total"
-                      value={product.Total}
-                      readOnly
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
-        <div style={{ alignSelf: "end" }}>
-          <h3>Total: {totalPrice}</h3>
-        </div>
+    <div>
+      {/* Page Header */}
+      <div className="page-header">
         <div>
-          <Button onClick={addRow}>Add Row</Button>
-          <Button onClick={handlePrint} style={{ marginLeft: "10px" }}>
-            Print
-          </Button>
-          <Button onClick={handleSubmit} style={{ marginLeft: "10px" }}>
-            Update
-          </Button>
+          <h1 className="page-title">
+            <i className="fa fa-receipt" style={{ color: "var(--primary)" }}></i>
+            POS Billing Terminal
+          </h1>
+          <p className="page-subtitle">
+            Generate invoices, auto-fill unit prices, deduct inventory stock, and record sales.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="btn-modern btn-secondary-modern"
+          >
+            <i className="fa fa-print"></i> Print Receipt
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="btn-modern btn-primary-modern"
+            disabled={isSubmitting || grandTotal <= 0}
+          >
+            {isSubmitting ? (
+              <>
+                <i className="fa fa-spinner fa-spin"></i> Processing...
+              </>
+            ) : (
+              <>
+                <i className="fa fa-check-circle"></i> Complete &amp; Save
+              </>
+            )}
+          </button>
         </div>
       </div>
-    )
+
+      {/* Invoice Card Container */}
+      <div
+        className="glass-card"
+        style={{ maxWidth: "920px", margin: "0 auto", padding: "2rem" }}
+      >
+        {/* Printable Area */}
+        <div ref={tableRef} style={{ padding: "0.5rem" }}>
+          {/* Invoice Header */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              borderBottom: "2px solid var(--border)",
+              paddingBottom: "1.25rem",
+              marginBottom: "1.5rem",
+              flexWrap: "wrap",
+              gap: "1rem",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 800,
+                  color: "var(--text-main)",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                Store<span style={{ color: "var(--primary)" }}>Flow</span>
+              </div>
+              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                Tax Invoice &amp; Customer Receipt
+              </div>
+            </div>
+
+            <div style={{ textAlign: "right" }}>
+              <div
+                style={{
+                  fontSize: "1.1rem",
+                  fontWeight: 700,
+                  color: "var(--text-main)",
+                }}
+              >
+                {invoiceNumber}
+              </div>
+              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                Date: {currentDate}
+              </div>
+              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                Cashier: {user?.name || user?.email}
+              </div>
+            </div>
+          </div>
+
+          {/* Billing Items Table */}
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: "0.95rem",
+              }}
+            >
+              <thead>
+                <tr
+                  style={{
+                    borderBottom: "1px solid var(--border)",
+                    background: "#f8fafc",
+                    textAlign: "left",
+                    color: "var(--text-muted)",
+                    fontSize: "0.8rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  <th style={{ padding: "0.75rem 1rem", width: "40%" }}>Product Name</th>
+                  <th style={{ padding: "0.75rem 1rem", width: "20%" }}>Price (NRs)</th>
+                  <th style={{ padding: "0.75rem 1rem", width: "15%" }}>Qty</th>
+                  <th style={{ padding: "0.75rem 1rem", width: "20%" }}>Total (NRs)</th>
+                  <th style={{ padding: "0.75rem 0.5rem", width: "5%" }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, index) => {
+                  const matchedCatalogItem = catalog.find(
+                    (c) => c.Name.trim().toLowerCase() === item.Name.trim().toLowerCase()
+                  );
+
+                  return (
+                    <tr
+                      key={index}
+                      style={{
+                        borderBottom: "1px solid #f1f5f9",
+                        transition: "background 0.15s",
+                      }}
+                    >
+                      <td style={{ padding: "0.6rem 0.5rem" }}>
+                        <input
+                          list={`catalog-list-${index}`}
+                          type="text"
+                          className="form-control-modern"
+                          placeholder="Select or type product..."
+                          value={item.Name}
+                          onChange={(e) => handleNameChange(index, e.target.value)}
+                        />
+                        <datalist id={`catalog-list-${index}`}>
+                          {catalog.map((c) => (
+                            <option key={c.ID} value={c.Name}>
+                              NRs. {Number(c.Price).toFixed(2)} &mdash; Stock: {c.Quantity}
+                            </option>
+                          ))}
+                        </datalist>
+                        {matchedCatalogItem && (
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color:
+                                matchedCatalogItem.Quantity > 5
+                                  ? "var(--success)"
+                                  : "var(--warning)",
+                              marginTop: "0.2rem",
+                              paddingLeft: "0.25rem",
+                            }}
+                          >
+                            <i className="fa fa-info-circle"></i> Available Stock:{" "}
+                            <strong>{matchedCatalogItem.Quantity}</strong>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: "0.6rem 0.5rem" }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="form-control-modern"
+                          value={item.Price}
+                          onChange={(e) =>
+                            handleFieldChange(index, "Price", e.target.value)
+                          }
+                        />
+                      </td>
+                      <td style={{ padding: "0.6rem 0.5rem" }}>
+                        <input
+                          type="number"
+                          step="1"
+                          min="1"
+                          className="form-control-modern"
+                          value={item.Quantity}
+                          onChange={(e) =>
+                            handleFieldChange(index, "Quantity", e.target.value)
+                          }
+                        />
+                      </td>
+                      <td
+                        style={{
+                          padding: "0.6rem 1rem",
+                          fontWeight: 700,
+                          color: "var(--text-main)",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        NRs. {(Number(item.Total) || 0).toFixed(2)}
+                      </td>
+                      <td style={{ padding: "0.6rem 0.25rem", verticalAlign: "middle" }}>
+                        <button
+                          type="button"
+                          onClick={() => removeRow(index)}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "var(--text-light)",
+                            cursor: "pointer",
+                            padding: "0.4rem",
+                            borderRadius: "var(--radius-sm)",
+                            transition: "var(--transition)",
+                          }}
+                          onMouseOver={(e) => (e.currentTarget.style.color = "var(--danger)")}
+                          onMouseOut={(e) =>
+                            (e.currentTarget.style.color = "var(--text-light)")
+                          }
+                          title="Remove Row"
+                        >
+                          <i className="fa fa-trash-alt"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Invoice Summary Footer */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              marginTop: "2rem",
+              paddingTop: "1.5rem",
+              borderTop: "2px solid var(--border)",
+              flexWrap: "wrap",
+              gap: "1.5rem",
+            }}
+          >
+            <div>
+              <button
+                type="button"
+                onClick={addRow}
+                className="btn-modern btn-secondary-modern"
+                style={{ fontSize: "0.88rem" }}
+              >
+                <i className="fa fa-plus"></i> Add Item Line
+              </button>
+            </div>
+
+            <div
+              style={{
+                minWidth: "260px",
+                background: "#f8fafc",
+                borderRadius: "var(--radius-md)",
+                padding: "1rem 1.25rem",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "0.5rem",
+                  fontSize: "0.9rem",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <span>Subtotal</span>
+                <span>NRs. {grandTotal.toFixed(2)}</span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "0.75rem",
+                  fontSize: "0.9rem",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <span>Tax (0%)</span>
+                <span>NRs. 0.00</span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "1.25rem",
+                  fontWeight: 800,
+                  color: "var(--primary)",
+                  borderTop: "1px solid var(--border)",
+                  paddingTop: "0.6rem",
+                }}
+              >
+                <span>Grand Total</span>
+                <span>NRs. {grandTotal.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
