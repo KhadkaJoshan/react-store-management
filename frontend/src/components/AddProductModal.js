@@ -1,39 +1,73 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useApi, getBackendHealthUrl } from "../services/api";
 import { useToast } from "../context/ToastContext";
 
-const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null }) => {
+const AddProductModal = ({
+  isOpen,
+  onClose,
+  onProductAdded,
+  productToEdit = null,
+}) => {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [addedCount, setAddedCount] = useState(0);
+
+  // Persistent entry mode: 'single' | 'multiple'
+  const [entryMode, setEntryMode] = useState(() => {
+    return localStorage.getItem("storeflow_add_mode") || "single";
+  });
+
   const api = useApi();
   const toast = useToast();
+  const nameInputRef = useRef(null);
 
-  React.useEffect(() => {
+  const isEditMode = !!productToEdit;
+
+  // Sync state when modal opens or productToEdit changes
+  useEffect(() => {
     if (productToEdit) {
       setName(productToEdit.Name || "");
       setPrice(productToEdit.Price !== undefined ? String(productToEdit.Price) : "");
-      setQuantity(productToEdit.Quantity !== undefined ? String(productToEdit.Quantity) : "");
+      setQuantity(
+        productToEdit.Quantity !== undefined ? String(productToEdit.Quantity) : ""
+      );
     } else {
       setName("");
       setPrice("");
       setQuantity("");
     }
     setError("");
+    setAddedCount(0);
+
+    // Auto-focus the name input when modal opens
+    if (isOpen) {
+      setTimeout(() => {
+        nameInputRef.current?.focus();
+      }, 100);
+    }
   }, [productToEdit, isOpen]);
 
   if (!isOpen) return null;
 
-  const isEditMode = !!productToEdit;
+  const handleModeChange = (mode) => {
+    setEntryMode(mode);
+    localStorage.setItem("storeflow_add_mode", mode);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 50);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
       setError("Product name is required.");
+      nameInputRef.current?.focus();
       return;
     }
 
@@ -53,25 +87,40 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null
     try {
       if (isEditMode) {
         await api.put("/update/" + productToEdit.ID, {
-          Name: name.trim(),
+          Name: trimmedName,
           Price: parsedPrice,
           Quantity: parsedQty,
         });
-        toast.success(`Product "${name.trim()}" updated successfully!`);
+        toast.success(`Product "${trimmedName}" updated successfully!`);
+        onProductAdded();
+        onClose();
       } else {
         await api.post("/addproducts", {
-          Name: name.trim(),
+          Name: trimmedName,
           Price: parsedPrice,
           Quantity: parsedQty,
         });
-        toast.success(`Product "${name.trim()}" added successfully!`);
-      }
 
-      setName("");
-      setPrice("");
-      setQuantity("");
-      onProductAdded();
-      onClose();
+        toast.success(`Added "${trimmedName}" (NRs. ${parsedPrice.toFixed(2)})!`);
+        onProductAdded();
+
+        if (entryMode === "multiple") {
+          // Continuous Entry Mode: clear fields, increment counter, refocus Product Name
+          setAddedCount((prev) => prev + 1);
+          setName("");
+          setPrice("");
+          setQuantity("");
+          setTimeout(() => {
+            nameInputRef.current?.focus();
+          }, 50);
+        } else {
+          // Single Product Mode: close modal
+          setName("");
+          setPrice("");
+          setQuantity("");
+          onClose();
+        }
+      }
     } catch (err) {
       const isNetworkError = err.message === "Network Error" || !err.response;
       let serverErr =
@@ -82,7 +131,9 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null
         serverErr =
           "Network Error: Unable to reach backend server. Please ensure backend SSL certificate is authorized.";
       } else if (!serverErr) {
-        serverErr = err.message || (isEditMode ? "Failed to update product." : "Failed to add product.");
+        serverErr =
+          err.message ||
+          (isEditMode ? "Failed to update product." : "Failed to add product.");
       }
       setError(serverErr);
       toast.error(serverErr);
@@ -94,13 +145,14 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        {/* Modal Header */}
         <div className="modal-header">
           <div className="modal-title">
             <i
               className={`fa ${isEditMode ? "fa-pen-to-square" : "fa-box-open"}`}
               style={{ color: "var(--primary)", marginRight: "0.5rem" }}
             ></i>
-            {isEditMode ? "Edit Product" : "Add New Product"}
+            {isEditMode ? "Edit Product" : "Add Products"}
           </div>
           <button
             onClick={onClose}
@@ -111,6 +163,7 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null
               color: "var(--text-muted)",
               cursor: "pointer",
             }}
+            title="Close"
           >
             &times;
           </button>
@@ -118,6 +171,64 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null
 
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
+            {/* Single vs Multiple Mode Switcher (only shown when adding new items) */}
+            {!isEditMode && (
+              <>
+                <div className="mode-switch-wrapper">
+                  <button
+                    type="button"
+                    className={`mode-switch-btn ${
+                      entryMode === "single" ? "active" : ""
+                    }`}
+                    onClick={() => handleModeChange("single")}
+                  >
+                    <i className="fa fa-box"></i>
+                    <span>Single Product</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`mode-switch-btn ${
+                      entryMode === "multiple" ? "active" : ""
+                    }`}
+                    onClick={() => handleModeChange("multiple")}
+                  >
+                    <i
+                      className="fa fa-bolt"
+                      style={{
+                        color: entryMode === "multiple" ? "var(--primary)" : "inherit",
+                      }}
+                    ></i>
+                    <span>Multiple (Continuous)</span>
+                  </button>
+                </div>
+
+                {entryMode === "multiple" && (
+                  <div className="batch-info-banner">
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.45rem",
+                      }}
+                    >
+                      <i className="fa fa-keyboard"></i>
+                      <span>
+                        <strong>Continuous Mode:</strong> Hit <strong>Enter ↵</strong>{" "}
+                        to save &amp; instantly enter next item.
+                      </span>
+                    </div>
+                    {addedCount > 0 && (
+                      <span className="batch-counter-badge">
+                        <i className="fa fa-check"></i> {addedCount} added
+                      </span>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Error Message if any */}
             {error && (
               <div
                 style={{
@@ -130,8 +241,17 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null
                   border: "1px solid #fecdd3",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <i className="fa fa-circle-exclamation" style={{ color: "#e11d48" }}></i>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <i
+                    className="fa fa-circle-exclamation"
+                    style={{ color: "#e11d48" }}
+                  ></i>
                   <span style={{ fontWeight: 600 }}>{error}</span>
                 </div>
                 {error.toLowerCase().includes("network") &&
@@ -158,9 +278,13 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null
               </div>
             )}
 
+            {/* Product Inputs */}
             <div className="form-group">
-              <label className="form-label">Product Name</label>
+              <label className="form-label">
+                Product Name <span style={{ color: "#ef4444" }}>*</span>
+              </label>
               <input
+                ref={nameInputRef}
                 type="text"
                 className="form-control-modern"
                 placeholder="e.g. Wireless Mouse, Milk, Coffee Beans"
@@ -171,9 +295,17 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "1rem",
+              }}
+            >
               <div className="form-group">
-                <label className="form-label">Unit Price (NRs)</label>
+                <label className="form-label">
+                  Unit Price (NRs) <span style={{ color: "#ef4444" }}>*</span>
+                </label>
                 <input
                   type="number"
                   step="0.01"
@@ -187,7 +319,9 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null
               </div>
 
               <div className="form-group">
-                <label className="form-label">Initial Stock Quantity</label>
+                <label className="form-label">
+                  Stock Quantity <span style={{ color: "#ef4444" }}>*</span>
+                </label>
                 <input
                   type="number"
                   step="1"
@@ -201,31 +335,63 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded, productToEdit = null
             </div>
           </div>
 
+          {/* Modal Footer Controls */}
           <div className="modal-footer">
-            <button
-              type="button"
-              className="btn-modern btn-secondary-modern"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-modern btn-primary-modern"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <i className="fa fa-spinner fa-spin"></i> {isEditMode ? "Updating..." : "Saving..."}
-                </>
-              ) : (
-                <>
-                  <i className={`fa ${isEditMode ? "fa-check" : "fa-plus"}`}></i>{" "}
-                  {isEditMode ? "Update Product" : "Save Product"}
-                </>
-              )}
-            </button>
+            {entryMode === "multiple" && !isEditMode ? (
+              <>
+                <button
+                  type="button"
+                  className="btn-modern btn-secondary-modern"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                >
+                  <i className="fa fa-check"></i> Done {addedCount > 0 ? `(${addedCount})` : ""}
+                </button>
+                <button
+                  type="submit"
+                  className="btn-modern btn-primary-modern"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <i className="fa fa-spinner fa-spin"></i> Saving...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa fa-arrow-right"></i> Save &amp; Next (Enter ↵)
+                    </>
+                  )}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn-modern btn-secondary-modern"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-modern btn-primary-modern"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <i className="fa fa-spinner fa-spin"></i>{" "}
+                      {isEditMode ? "Updating..." : "Saving..."}
+                    </>
+                  ) : (
+                    <>
+                      <i className={`fa ${isEditMode ? "fa-check" : "fa-plus"}`}></i>{" "}
+                      {isEditMode ? "Update Product" : "Save Product (Enter ↵)"}
+                    </>
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </form>
       </div>
