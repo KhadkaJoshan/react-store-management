@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import "../App.css";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { AgGridReact } from "ag-grid-react";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { ModuleRegistry } from "@ag-grid-community/core";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "../context/AuthContext";
 import { useApi, getBackendHealthUrl } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import StatCard from "../components/StatCard";
@@ -14,7 +14,7 @@ import AddProductModal from "../components/AddProductModal";
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
 function ShowAllProducts() {
-  const { isAuthenticated, isLoading, error } = useAuth0();
+  const { isAuthenticated, isLoading, error } = useAuth();
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRowID, setSelectedRowID] = useState("");
@@ -24,11 +24,15 @@ function ShowAllProducts() {
 
   const api = useApi();
   const toast = useToast();
+  const inFlightRef = useRef(false);
 
   const fetchProducts = useCallback(() => {
     if (!isAuthenticated) return;
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setIsFetching(true);
     setFetchError("");
+
     api
       .get("/products")
       .then((res) => {
@@ -39,6 +43,7 @@ function ShowAllProducts() {
         setFetchError(msg);
       })
       .finally(() => {
+        inFlightRef.current = false;
         setIsFetching(false);
       });
   }, [api, isAuthenticated]);

@@ -1,9 +1,11 @@
-import React, { useEffect } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
+import React, { useEffect, useState } from "react";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const SignInWithGoogle = () => {
-  const { loginWithRedirect, isAuthenticated, isLoading, error } = useAuth0();
+  const { login, isAuthenticated, isLoading } = useAuth();
+  const [authError, setAuthError] = useState("");
   const navigate = useNavigate();
 
   // If already logged in, automatically proceed to dashboard
@@ -13,34 +15,40 @@ const SignInWithGoogle = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSuccess = (credentialResponse) => {
     try {
-      await loginWithRedirect({
-        authorizationParams: {
-          connection: "google-oauth2",
-          redirect_uri:
-            process.env.REACT_APP_AUTH0_REDIRECT_URI ||
-            "https://127.0.0.1:3000/viewproducts",
-        },
-      });
+      if (credentialResponse.credential) {
+        login(credentialResponse.credential);
+        navigate("/viewproducts", { replace: true });
+      } else {
+        setAuthError("No credentials received from Google.");
+      }
     } catch (err) {
-      console.error("Google login redirect error:", err);
+      setAuthError(err.message || "Failed to process Google sign in.");
     }
   };
 
-  const handleEmailLogin = async () => {
-    try {
-      await loginWithRedirect({
-        authorizationParams: {
-          redirect_uri:
-            process.env.REACT_APP_AUTH0_REDIRECT_URI ||
-            "https://127.0.0.1:3000/viewproducts",
-        },
-      });
-    } catch (err) {
-      console.error("Email login redirect error:", err);
-    }
+  const handleGoogleError = () => {
+    setAuthError("Google Sign-In failed or was closed. Please try again.");
   };
+
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--bg-body)",
+        }}
+      >
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -291,8 +299,8 @@ const SignInWithGoogle = () => {
               Sign in with your verified account to access your inventory and POS terminal.
             </p>
 
-            {/* Error banner if Auth0 reports an error */}
-            {error && (
+            {/* Error banner if authentication reports an error */}
+            {authError && (
               <div
                 style={{
                   padding: "0.85rem 1rem",
@@ -318,126 +326,30 @@ const SignInWithGoogle = () => {
                   <i className="fa fa-circle-exclamation"></i>
                   <span>Authentication Notice</span>
                 </div>
-                {error.message?.toLowerCase().includes("connection") ? (
-                  <div>
-                    Google Social Login is not toggled ON in your Auth0 dashboard for this app.
-                    To enable direct Google account choosing, go to{" "}
-                    <strong>Auth0 &rarr; Authentication &rarr; Social &rarr; Google</strong> and
-                    enable this application. In the meantime, you can sign in below with email.
-                  </div>
-                ) : (
-                  <div>{error.message || "Authentication failed. Please try again."}</div>
-                )}
+                <div>{authError}</div>
               </div>
             )}
 
-            {/* Google Sign In Button */}
-            <button
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-              style={{
-                width: "100%",
-                padding: "0.8rem 1.25rem",
-                borderRadius: "var(--radius-md)",
-                background: "#ffffff",
-                border: "1px solid #cbd5e1",
-                color: "#1e293b",
-                fontSize: "0.98rem",
-                fontWeight: 600,
-                cursor: isLoading ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0.85rem",
-                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.06)",
-                transition: "var(--transition)",
-                marginBottom: "1rem",
-              }}
-              onMouseOver={(e) => {
-                if (!isLoading) {
-                  e.currentTarget.style.background = "#f8fafc";
-                  e.currentTarget.style.borderColor = "#94a3b8";
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                  e.currentTarget.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.08)";
-                }
-              }}
-              onMouseOut={(e) => {
-                if (!isLoading) {
-                  e.currentTarget.style.background = "#ffffff";
-                  e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.06)";
-                }
-              }}
-            >
-              {/* Official Google 4-Color SVG Icon */}
-              <svg width="20" height="20" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
-                <path
-                  fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.97 0 12s.45 3.84 1.25 5.42l4.03-3.15z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                />
-              </svg>
-              <span>{isLoading ? "Connecting to Google..." : "Sign in with Google"}</span>
-            </button>
-
-            {/* Subtle Divider */}
+            {/* Google Native Sign In Button */}
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                margin: "1.25rem 0",
-                gap: "0.75rem",
-              }}
-            >
-              <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
-              <span
-                style={{
-                  fontSize: "0.75rem",
-                  color: "var(--text-light)",
-                  fontWeight: 600,
-                  letterSpacing: "0.06em",
-                }}
-              >
-                OR ENTERPRISE / EMAIL
-              </span>
-              <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
-            </div>
-
-            {/* Auth0 / SSO Secondary Button */}
-            <button
-              onClick={handleEmailLogin}
-              disabled={isLoading}
-              className="btn-modern btn-primary-modern"
-              style={{
+                justifyContent: "center",
                 width: "100%",
-                padding: "0.8rem 1.25rem",
-                fontSize: "0.95rem",
+                minHeight: "44px",
+                marginBottom: "1.25rem",
               }}
             >
-              {isLoading ? (
-                <>
-                  <i className="fa fa-spinner fa-spin"></i>
-                  <span>Connecting to Auth0...</span>
-                </>
-              ) : (
-                <>
-                  <i className="fa fa-envelope"></i>
-                  <span>Sign in with Email / Auth0</span>
-                </>
-              )}
-            </button>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                theme="outline"
+                size="large"
+                shape="rectangular"
+                width="100%"
+                text="signin_with"
+              />
+            </div>
 
             {/* Security Badge Footer */}
             <div
@@ -454,7 +366,7 @@ const SignInWithGoogle = () => {
               }}
             >
               <i className="fa fa-shield-check" style={{ color: "var(--success)" }}></i>
-              <span>256-Bit SSL Encrypted &bull; Auth0 JWT Protected</span>
+              <span>Google OAuth 2.0 Verified &bull; 256-Bit SSL Encrypted</span>
             </div>
           </div>
 

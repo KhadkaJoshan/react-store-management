@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import "../App.css";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { AgGridReact } from "ag-grid-react";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { ModuleRegistry } from "@ag-grid-community/core";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "../context/AuthContext";
 import { useApi, getBackendHealthUrl } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import StatCard from "../components/StatCard";
@@ -13,7 +13,7 @@ import StatCard from "../components/StatCard";
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
 function Sales() {
-  const { isAuthenticated, isLoading } = useAuth0();
+  const { isAuthenticated, isLoading } = useAuth();
   const [sales, setSales] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isFetching, setIsFetching] = useState(false);
@@ -21,11 +21,15 @@ function Sales() {
 
   const api = useApi();
   const toast = useToast();
+  const inFlightRef = useRef(false);
 
   const fetchSales = useCallback(() => {
     if (!isAuthenticated) return;
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setIsFetching(true);
     setFetchError("");
+
     api
       .get("/sales")
       .then((res) => {
@@ -38,6 +42,7 @@ function Sales() {
         toast.error(errorMsg);
       })
       .finally(() => {
+        inFlightRef.current = false;
         setIsFetching(false);
       });
   }, [api, isAuthenticated, toast]);

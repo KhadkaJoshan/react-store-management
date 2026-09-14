@@ -2,22 +2,23 @@ const jwt = require("jsonwebtoken");
 const jwksRsa = require("jwks-rsa");
 const prisma = require("../lib/prisma");
 
-const domain = process.env.AUTH0_DOMAIN || "dev-cuxo3uboupppygbb.us.auth0.com";
-const clientId = process.env.AUTH0_CLIENT_ID || "3MjnrJPwYiky6ylFURKr4Ahj45XHtTOl";
-const audience = process.env.AUTH0_AUDIENCE;
+const googleClientId =
+  process.env.GOOGLE_CLIENT_ID ||
+  "348149978736-l06qd35ip5rcvlehi8jgeqmjtvk3ug9j.apps.googleusercontent.com";
 
-const jwksClient = jwksRsa({
+// Google OAuth 2.0 public certs JWKS endpoint
+const googleJwksClient = jwksRsa({
   cache: true,
   rateLimit: true,
-  jwksRequestsPerMinute: 10,
-  jwksUri: `https://${domain}/.well-known/jwks.json`,
+  jwksRequestsPerMinute: 20,
+  jwksUri: "https://www.googleapis.com/oauth2/v3/certs",
 });
 
 function getKey(header, callback) {
   if (!header || !header.kid) {
     return callback(new Error("Token header missing 'kid' (key ID)"));
   }
-  jwksClient.getSigningKey(header.kid, function (err, key) {
+  googleJwksClient.getSigningKey(header.kid, function (err, key) {
     if (err) {
       return callback(err);
     }
@@ -26,7 +27,55 @@ function getKey(header, callback) {
   });
 }
 
-// Middleware to verify Auth0 JWT and attach user
+// In-memory cache for verified tokens to eliminate slow repeated JWKS network calls
+const verifiedTokenCache = new Map();
+// In-memory cache for user database records (5-minute TTL)
+const userCache = new Map();
+
+function getCachedTokenPayload(token) {
+  const cached = verifiedTokenCache.get(token);
+  if (!cached) return null;
+  if (cached.exp && cached.exp * 1000 <= Date.now()) {
+    verifiedTokenCache.delete(token);
+    return null;
+  }
+  return cached;
+}
+
+function setCachedTokenPayload(token, payload) {
+  if (!token || !payload) return;
+  if (verifiedTokenCache.size > 500) {
+    const now = Date.now();
+    for (const [k, v] of verifiedTokenCache.entries()) {
+      if (v.exp && v.exp * 1000 <= now) verifiedTokenCache.delete(k);
+    }
+  }
+  verifiedTokenCache.set(token, payload);
+}
+
+function handleVerifiedPayload(verifiedPayload, req, res, next, isProd, headerEmail) {
+  let email = verifiedPayload.email;
+
+  if (!email && !isProd) {
+    email = headerEmail || verifiedPayload.sub;
+  }
+
+  if (!email) {
+    return res
+      .status(401)
+      .json({ error: "Unauthorized: No verified email claim found in token." });
+  }
+
+  const name =
+    verifiedPayload.name ||
+    (email && email.includes("@") ? email.split("@")[0] : "Google User");
+
+  const sub = verifiedPayload.sub;
+
+  lookupAndAttachUser(email, name, sub, req, res, next);
+}
+
+// Middleware to verify Google OAuth ID token and attach user
 const authenticateUser = (req, res, next) => {
   const isProd = process.env.NODE_ENV === "production";
   const authHeader = req.headers.authorization;
@@ -45,6 +94,12 @@ const authenticateUser = (req, res, next) => {
 
   const token = authHeader.split(" ")[1];
 
+  // FAST PATH: If this token was already verified recently, resolve in 0.01ms!
+  const cachedPayload = getCachedTokenPayload(token);
+  if (cachedPayload) {
+    return handleVerifiedPayload(cachedPayload, req, res, next, isProd, headerEmail);
+  }
+
   // Decode unverified token to inspect claims and header
   const decodedToken = jwt.decode(token, { complete: true });
   if (!decodedToken || !decodedToken.header) {
@@ -58,24 +113,20 @@ const authenticateUser = (req, res, next) => {
   }
 
   const verifyOptions = {
-    issuer: [`https://${domain}/`, `https://${domain}`],
+    issuer: ["https://accounts.google.com", "accounts.google.com"],
+    audience: googleClientId,
     algorithms: ["RS256"],
   };
-
-  // If audience or clientId is configured, validate audience
-  if (audience) {
-    verifyOptions.audience = [audience, clientId];
-  }
 
   jwt.verify(token, getKey, verifyOptions, (err, payload) => {
     let verifiedPayload = payload;
 
     if (err) {
-      console.warn("[Auth Warning] RS256 token verification failed:", err.message);
+      console.warn("[Auth Warning] Google RS256 token verification failed:", err.message);
 
       if (isProd) {
         // STRICT IN PRODUCTION: reject immediately, no fallback
-        return res.status(401).json({ error: "Unauthorized: Invalid or expired token." });
+        return res.status(401).json({ error: "Unauthorized: Invalid or expired Google token." });
       }
 
       // DEVELOPMENT ONLY FALLBACK:
@@ -83,10 +134,10 @@ const authenticateUser = (req, res, next) => {
       const unverified = decodedToken.payload;
       if (
         unverified &&
-        (unverified.iss === `https://${domain}/` || unverified.iss === `https://${domain}`)
+        (unverified.iss?.includes("google") || unverified.email)
       ) {
         console.warn(
-          "[DEV AUTH WARN] Accepting unverified local Auth0 token for development session"
+          "[DEV AUTH WARN] Accepting unverified local token for development session"
         );
         verifiedPayload = unverified;
       } else if (headerEmail) {
@@ -97,30 +148,10 @@ const authenticateUser = (req, res, next) => {
       }
     }
 
-    // In production, email MUST come from verified token claims
-    let email =
-      verifiedPayload.email ||
-      verifiedPayload[`https://${domain}/email`];
+    // Cache verified payload for subsequent requests
+    setCachedTokenPayload(token, verifiedPayload);
 
-    if (!email && !isProd) {
-      email = headerEmail || verifiedPayload.sub;
-    }
-
-    if (!email) {
-      return res
-        .status(401)
-        .json({ error: "Unauthorized: No verified email claim found in token." });
-    }
-
-    const name =
-      verifiedPayload.name ||
-      verifiedPayload.nickname ||
-      verifiedPayload[`https://${domain}/name`] ||
-      (email && email.includes("@") ? email.split("@")[0] : "User");
-
-    const sub = verifiedPayload.sub;
-
-    lookupAndAttachUser(email, name, sub, req, res, next);
+    handleVerifiedPayload(verifiedPayload, req, res, next, isProd, headerEmail);
   });
 };
 
@@ -132,6 +163,17 @@ async function lookupAndAttachUser(email, name, sub, req, res, next) {
 
   const normalizedEmail = email.trim().toLowerCase();
 
+  const cachedUser = userCache.get(normalizedEmail);
+  if (cachedUser && cachedUser._cachedAt > Date.now() - 5 * 60 * 1000) {
+    req.user = {
+      id: cachedUser.id,
+      email: cachedUser.email,
+      name: cachedUser.name,
+      sub: sub,
+    };
+    return next();
+  }
+
   try {
     // Try matching by exact or case-insensitive email
     let user = await prisma.user.findFirst({
@@ -141,6 +183,12 @@ async function lookupAndAttachUser(email, name, sub, req, res, next) {
     });
 
     if (user) {
+      userCache.set(normalizedEmail, {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        _cachedAt: Date.now(),
+      });
       req.user = {
         id: user.id,
         email: user.email,

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useReactToPrint } from "react-to-print";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "../context/AuthContext";
 import { useApi } from "../services/api";
 import { useToast } from "../context/ToastContext";
 
@@ -15,7 +15,7 @@ const NewBilling = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const tableRef = useRef();
-  const { user, isAuthenticated, isLoading } = useAuth0();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const api = useApi();
   const toast = useToast();
 
@@ -25,14 +25,20 @@ const NewBilling = () => {
     day: "numeric",
   });
 
+  const catalogInFlightRef = useRef(false);
+
   // Fetch product catalog for auto-fill
   const fetchCatalog = useCallback(async () => {
     if (!isAuthenticated) return;
+    if (catalogInFlightRef.current) return;
+    catalogInFlightRef.current = true;
     try {
       const response = await api.get("/products");
       setCatalog(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Error fetching catalog for billing:", err);
+    } finally {
+      catalogInFlightRef.current = false;
     }
   }, [api, isAuthenticated]);
 

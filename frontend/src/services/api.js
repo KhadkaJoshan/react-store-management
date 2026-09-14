@@ -1,6 +1,6 @@
 import axios from "axios";
-import { useAuth0 } from "@auth0/auth0-react";
-import { useMemo } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useMemo, useRef } from "react";
 
 export const getApiBaseUrl = () => {
   if (typeof window !== "undefined") {
@@ -35,45 +35,25 @@ export const getBackendHealthUrl = () => {
 };
 
 export const useApi = () => {
-  const { getIdTokenClaims, getAccessTokenSilently, user, isAuthenticated } = useAuth0();
+  const { token, user, isAuthenticated } = useAuth();
+  const authRef = useRef({ token, user, isAuthenticated });
+  authRef.current = { token, user, isAuthenticated };
 
   const api = useMemo(() => {
     const instance = axios.create({
       baseURL: getApiBaseUrl(),
+      timeout: 10000,
     });
 
     instance.interceptors.request.use(
-      async (config) => {
-        if (isAuthenticated) {
-          try {
-            let token = null;
-
-            // Prioritize ID token as it reliably contains user profile and email
-            try {
-              const claims = await getIdTokenClaims();
-              token = claims?.__raw;
-            } catch (claimErr) {
-              console.warn("Could not retrieve ID token claims directly:", claimErr);
-            }
-
-            if (!token) {
-              try {
-                token = await getAccessTokenSilently();
-              } catch (silentErr) {
-                console.warn("Could not retrieve access token silently:", silentErr);
-              }
-            }
-
-            if (token) {
-              config.headers.Authorization = `Bearer ${token}`;
-            }
-
-            if (user?.email) {
-              config.headers["x-user-email"] = user.email;
-            }
-          } catch (error) {
-            console.error("Failed to attach Auth0 authentication headers:", error);
-          }
+      (config) => {
+        const auth = authRef.current;
+        const currentToken = auth.token || localStorage.getItem("storeflow_google_token");
+        if (currentToken) {
+          config.headers.Authorization = `Bearer ${currentToken}`;
+        }
+        if (auth.user?.email) {
+          config.headers["x-user-email"] = auth.user.email;
         }
         return config;
       },
@@ -96,7 +76,7 @@ export const useApi = () => {
     );
 
     return instance;
-  }, [getIdTokenClaims, getAccessTokenSilently, user, isAuthenticated]);
+  }, []);
 
   return api;
 };

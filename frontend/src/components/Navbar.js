@@ -1,9 +1,9 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth0 } from "@auth0/auth0-react";
+import { useAuth } from "../context/AuthContext";
 
 const Navbar = () => {
-  const { user, logout } = useAuth0();
+  const { user, logout } = useAuth();
   const location = useLocation();
 
   const navLinks = [
@@ -156,22 +156,36 @@ const Navbar = () => {
                 border: "1px solid #e2e8f0",
               }}
             >
-              <div
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  background: "var(--primary)",
-                  color: "#ffffff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.8rem",
-                  fontWeight: 700,
-                }}
-              >
-                {user.name ? user.name.charAt(0).toUpperCase() : "U"}
-              </div>
+              {user.picture ? (
+                <img
+                  src={user.picture}
+                  alt={user.name || "User"}
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                  }}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "50%",
+                    background: "var(--primary)",
+                    color: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                  }}
+                >
+                  {user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                </div>
+              )}
               <div
                 style={{
                   maxWidth: "140px",
@@ -190,9 +204,7 @@ const Navbar = () => {
 
           {/* Logout Button */}
           <button
-            onClick={() =>
-              logout({ logoutParams: { returnTo: window.location.origin } })
-            }
+            onClick={() => logout()}
             className="btn-modern btn-danger-modern"
             style={{ padding: "0.45rem 0.85rem", fontSize: "0.85rem" }}
             title="Log Out"
