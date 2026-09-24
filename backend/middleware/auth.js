@@ -228,22 +228,12 @@ async function lookupAndAttachUser(email, name, sub, req, res, next) {
       }
     }
 
-    // Create user record if not exists
-    user = await prisma.user.create({
-      data: {
-        name: name,
-        email: email,
-      },
+    // User does not exist in the database.
+    // Reject login to enforce manual admin registration.
+    console.warn(`[Auth] Rejected login for unregistered email: ${email}`);
+    return res.status(403).json({ 
+      error: "Access denied. Your account must be registered by an administrator before you can log in." 
     });
-
-    req.user = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      sub: sub,
-    };
-    console.log(`[Auth] Created new user record for ${email} (ID: ${req.user.id})`);
-    return next();
   } catch (error) {
     console.error("Database auth error:", error);
     return res.status(500).json({ error: "Database error during authentication." });

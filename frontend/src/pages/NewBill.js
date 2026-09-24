@@ -1,20 +1,21 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useReactToPrint } from "react-to-print";
 import { useAuth } from "../context/AuthContext";
 import { useApi } from "../services/api";
 import { useToast } from "../context/ToastContext";
+import ReceiptModal from "../components/ReceiptModal";
 
 const NewBilling = () => {
   const [items, setItems] = useState([
     { Name: "", Price: 0, Quantity: 1, Total: 0 },
   ]);
   const [catalog, setCatalog] = useState([]);
-  const [invoiceNumber] = useState(
+  const [invoiceNumber, setInvoiceNumber] = useState(
     () => `INV-${Date.now().toString().slice(-6)}`
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptBillData, setReceiptBillData] = useState(null);
 
-  const tableRef = useRef();
   const { user, isAuthenticated, isLoading } = useAuth();
   const api = useApi();
   const toast = useToast();
@@ -100,6 +101,24 @@ const NewBilling = () => {
     return items.reduce((acc, item) => acc + (Number(item.Total) || 0), 0);
   }, [items]);
 
+  // Preview / Print Receipt before checkout
+  const handleOpenReceiptPreview = () => {
+    const validItems = items.filter((item) => item.Name.trim() !== "");
+    if (validItems.length === 0) {
+      toast.warning("Please add at least one product before previewing receipt.");
+      return;
+    }
+
+    setReceiptBillData({
+      invoiceNumber,
+      date: currentDate,
+      cashier: user?.name || user?.email || "Cashier",
+      items: validItems,
+      grandTotal,
+    });
+    setIsReceiptModalOpen(true);
+  };
+
   // Submit bill and record sales
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -132,6 +151,19 @@ const NewBilling = () => {
       await api.post("/addSales", validItems);
 
       toast.success("Bill completed! Stock decremented and sales logged.");
+
+      // Automatically open clean receipt modal for instant printing or PDF download
+      setReceiptBillData({
+        invoiceNumber,
+        date: currentDate,
+        cashier: user?.name || user?.email || "Cashier",
+        items: validItems,
+        grandTotal,
+      });
+      setIsReceiptModalOpen(true);
+
+      // Reset state for next customer
+      setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
       setItems([{ Name: "", Price: 0, Quantity: 1, Total: 0 }]);
       fetchCatalog(); // Refresh catalog stock counts
     } catch (err) {
@@ -142,11 +174,6 @@ const NewBilling = () => {
       setIsSubmitting(false);
     }
   };
-
-  // Print receipt function
-  const handlePrint = useReactToPrint({
-    content: () => tableRef.current,
-  });
 
   if (isLoading) {
     return (
@@ -182,19 +209,23 @@ const NewBilling = () => {
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "0.75rem" }}>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           <button
             type="button"
-            onClick={handlePrint}
+            onClick={handleOpenReceiptPreview}
             className="btn-modern btn-secondary-modern"
+            disabled={grandTotal <= 0}
+            title="Preview or print customer receipt"
           >
-            <i className="fa fa-print"></i> Print Receipt
+            <i className="fa fa-receipt"></i> Preview Receipt
           </button>
+
           <button
             type="button"
             onClick={handleSubmit}
             className="btn-modern btn-primary-modern"
             disabled={isSubmitting || grandTotal <= 0}
+            title="Complete checkout and print bill"
           >
             {isSubmitting ? (
               <>
@@ -214,269 +245,273 @@ const NewBilling = () => {
         className="glass-card"
         style={{ maxWidth: "920px", margin: "0 auto", padding: "2rem" }}
       >
-        {/* Printable Area */}
-        <div ref={tableRef} style={{ padding: "0.5rem" }}>
-          {/* Invoice Header */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              borderBottom: "2px solid var(--border)",
-              paddingBottom: "1.25rem",
-              marginBottom: "1.5rem",
-              flexWrap: "wrap",
-              gap: "1rem",
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: "1.5rem",
-                  fontWeight: 800,
-                  color: "var(--text-main)",
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Store<span style={{ color: "var(--primary)" }}>Flow</span>
-              </div>
-              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                Tax Invoice &amp; Customer Receipt
-              </div>
-            </div>
-
-            <div style={{ textAlign: "right" }}>
-              <div
-                style={{
-                  fontSize: "1.1rem",
-                  fontWeight: 700,
-                  color: "var(--text-main)",
-                }}
-              >
-                {invoiceNumber}
-              </div>
-              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                Date: {currentDate}
-              </div>
-              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                Cashier: {user?.name || user?.email}
-              </div>
-            </div>
-          </div>
-
-          {/* Billing Items Table */}
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "0.95rem",
-              }}
-            >
-              <thead>
-                <tr
-                  style={{
-                    borderBottom: "1px solid var(--border)",
-                    background: "#f8fafc",
-                    textAlign: "left",
-                    color: "var(--text-muted)",
-                    fontSize: "0.8rem",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  <th style={{ padding: "0.75rem 1rem", width: "40%" }}>Product Name</th>
-                  <th style={{ padding: "0.75rem 1rem", width: "20%" }}>Price (NRs)</th>
-                  <th style={{ padding: "0.75rem 1rem", width: "15%" }}>Qty</th>
-                  <th style={{ padding: "0.75rem 1rem", width: "20%" }}>Total (NRs)</th>
-                  <th style={{ padding: "0.75rem 0.5rem", width: "5%" }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, index) => {
-                  const matchedCatalogItem = catalog.find(
-                    (c) => c.Name.trim().toLowerCase() === item.Name.trim().toLowerCase()
-                  );
-
-                  return (
-                    <tr
-                      key={index}
-                      style={{
-                        borderBottom: "1px solid #f1f5f9",
-                        transition: "background 0.15s",
-                      }}
-                    >
-                      <td style={{ padding: "0.6rem 0.5rem" }}>
-                        <input
-                          list={`catalog-list-${index}`}
-                          type="text"
-                          className="form-control-modern"
-                          placeholder="Select or type product..."
-                          value={item.Name}
-                          onChange={(e) => handleNameChange(index, e.target.value)}
-                        />
-                        <datalist id={`catalog-list-${index}`}>
-                          {catalog.map((c) => (
-                            <option key={c.ID} value={c.Name}>
-                              NRs. {Number(c.Price).toFixed(2)} &mdash; Stock: {c.Quantity}
-                            </option>
-                          ))}
-                        </datalist>
-                        {matchedCatalogItem && (
-                          <div
-                            style={{
-                              fontSize: "0.75rem",
-                              color:
-                                matchedCatalogItem.Quantity > 5
-                                  ? "var(--success)"
-                                  : "var(--warning)",
-                              marginTop: "0.2rem",
-                              paddingLeft: "0.25rem",
-                            }}
-                          >
-                            <i className="fa fa-info-circle"></i> Available Stock:{" "}
-                            <strong>{matchedCatalogItem.Quantity}</strong>
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: "0.6rem 0.5rem" }}>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          className="form-control-modern"
-                          value={item.Price}
-                          onChange={(e) =>
-                            handleFieldChange(index, "Price", e.target.value)
-                          }
-                        />
-                      </td>
-                      <td style={{ padding: "0.6rem 0.5rem" }}>
-                        <input
-                          type="number"
-                          step="1"
-                          min="1"
-                          className="form-control-modern"
-                          value={item.Quantity}
-                          onChange={(e) =>
-                            handleFieldChange(index, "Quantity", e.target.value)
-                          }
-                        />
-                      </td>
-                      <td
-                        style={{
-                          padding: "0.6rem 1rem",
-                          fontWeight: 700,
-                          color: "var(--text-main)",
-                          verticalAlign: "middle",
-                        }}
-                      >
-                        NRs. {(Number(item.Total) || 0).toFixed(2)}
-                      </td>
-                      <td style={{ padding: "0.6rem 0.25rem", verticalAlign: "middle" }}>
-                        <button
-                          type="button"
-                          onClick={() => removeRow(index)}
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "var(--text-light)",
-                            cursor: "pointer",
-                            padding: "0.4rem",
-                            borderRadius: "var(--radius-sm)",
-                            transition: "var(--transition)",
-                          }}
-                          onMouseOver={(e) => (e.currentTarget.style.color = "var(--danger)")}
-                          onMouseOut={(e) =>
-                            (e.currentTarget.style.color = "var(--text-light)")
-                          }
-                          title="Remove Row"
-                        >
-                          <i className="fa fa-trash-alt"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Invoice Summary Footer */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              marginTop: "2rem",
-              paddingTop: "1.5rem",
-              borderTop: "2px solid var(--border)",
-              flexWrap: "wrap",
-              gap: "1.5rem",
-            }}
-          >
-            <div>
-              <button
-                type="button"
-                onClick={addRow}
-                className="btn-modern btn-secondary-modern"
-                style={{ fontSize: "0.88rem" }}
-              >
-                <i className="fa fa-plus"></i> Add Item Line
-              </button>
-            </div>
-
+        {/* Invoice Header */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            borderBottom: "2px solid var(--border)",
+            paddingBottom: "1.25rem",
+            marginBottom: "1.5rem",
+            flexWrap: "wrap",
+            gap: "1rem",
+          }}
+        >
+          <div>
             <div
               style={{
-                minWidth: "260px",
-                background: "#f8fafc",
-                borderRadius: "var(--radius-md)",
-                padding: "1rem 1.25rem",
-                border: "1px solid var(--border)",
+                fontSize: "1.5rem",
+                fontWeight: 800,
+                color: "var(--text-main)",
+                letterSpacing: "-0.02em",
               }}
             >
-              <div
+              Store<span style={{ color: "var(--primary)" }}>Flow</span>
+            </div>
+            <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Tax Invoice &amp; Customer Receipt Terminal
+            </div>
+          </div>
+
+          <div style={{ textAlign: "right" }}>
+            <div
+              style={{
+                fontSize: "1.1rem",
+                fontWeight: 700,
+                color: "var(--text-main)",
+              }}
+            >
+              {invoiceNumber}
+            </div>
+            <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Date: {currentDate}
+            </div>
+            <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Cashier: {user?.name || user?.email}
+            </div>
+          </div>
+        </div>
+
+        {/* Billing Items Table */}
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "0.95rem",
+            }}
+          >
+            <thead>
+              <tr
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "0.5rem",
-                  fontSize: "0.9rem",
+                  borderBottom: "1px solid var(--border)",
+                  background: "#f8fafc",
+                  textAlign: "left",
                   color: "var(--text-muted)",
+                  fontSize: "0.8rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
                 }}
               >
-                <span>Subtotal</span>
-                <span>NRs. {grandTotal.toFixed(2)}</span>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "0.75rem",
-                  fontSize: "0.9rem",
-                  color: "var(--text-muted)",
-                }}
-              >
-                <span>Tax (0%)</span>
-                <span>NRs. 0.00</span>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "1.25rem",
-                  fontWeight: 800,
-                  color: "var(--primary)",
-                  borderTop: "1px solid var(--border)",
-                  paddingTop: "0.6rem",
-                }}
-              >
-                <span>Grand Total</span>
-                <span>NRs. {grandTotal.toFixed(2)}</span>
-              </div>
+                <th style={{ padding: "0.75rem 1rem", width: "40%" }}>Product Name</th>
+                <th style={{ padding: "0.75rem 1rem", width: "20%" }}>Price (NRs)</th>
+                <th style={{ padding: "0.75rem 1rem", width: "15%" }}>Qty</th>
+                <th style={{ padding: "0.75rem 1rem", width: "20%" }}>Total (NRs)</th>
+                <th style={{ padding: "0.75rem 0.5rem", width: "5%" }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, index) => {
+                const matchedCatalogItem = catalog.find(
+                  (c) => c.Name.trim().toLowerCase() === item.Name.trim().toLowerCase()
+                );
+
+                return (
+                  <tr
+                    key={index}
+                    style={{
+                      borderBottom: "1px solid #f1f5f9",
+                      transition: "background 0.15s",
+                    }}
+                  >
+                    <td style={{ padding: "0.6rem 0.5rem" }}>
+                      <input
+                        list={`catalog-list-${index}`}
+                        type="text"
+                        className="form-control-modern"
+                        placeholder="Select or type product..."
+                        value={item.Name}
+                        onChange={(e) => handleNameChange(index, e.target.value)}
+                      />
+                      <datalist id={`catalog-list-${index}`}>
+                        {catalog.map((c) => (
+                          <option key={c.ID} value={c.Name}>
+                            NRs. {Number(c.Price).toFixed(2)} &mdash; Stock: {c.Quantity}
+                          </option>
+                        ))}
+                      </datalist>
+                      {matchedCatalogItem && (
+                        <div
+                          style={{
+                            fontSize: "0.75rem",
+                            color:
+                              matchedCatalogItem.Quantity > 5
+                                ? "var(--success)"
+                                : "var(--warning)",
+                            marginTop: "0.2rem",
+                            paddingLeft: "0.25rem",
+                          }}
+                        >
+                          <i className="fa fa-info-circle"></i> Available Stock:{" "}
+                          <strong>{matchedCatalogItem.Quantity}</strong>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: "0.6rem 0.5rem" }}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="form-control-modern"
+                        value={item.Price}
+                        onChange={(e) =>
+                          handleFieldChange(index, "Price", e.target.value)
+                        }
+                      />
+                    </td>
+                    <td style={{ padding: "0.6rem 0.5rem" }}>
+                      <input
+                        type="number"
+                        step="1"
+                        min="1"
+                        className="form-control-modern"
+                        value={item.Quantity}
+                        onChange={(e) =>
+                          handleFieldChange(index, "Quantity", e.target.value)
+                        }
+                      />
+                    </td>
+                    <td
+                      style={{
+                        padding: "0.6rem 1rem",
+                        fontWeight: 700,
+                        color: "var(--text-main)",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      NRs. {(Number(item.Total) || 0).toFixed(2)}
+                    </td>
+                    <td style={{ padding: "0.6rem 0.25rem", verticalAlign: "middle" }}>
+                      <button
+                        type="button"
+                        onClick={() => removeRow(index)}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "var(--text-light)",
+                          cursor: "pointer",
+                          padding: "0.4rem",
+                          borderRadius: "var(--radius-sm)",
+                          transition: "var(--transition)",
+                        }}
+                        onMouseOver={(e) => (e.currentTarget.style.color = "var(--danger)")}
+                        onMouseOut={(e) =>
+                          (e.currentTarget.style.color = "var(--text-light)")
+                        }
+                        title="Remove Row"
+                      >
+                        <i className="fa fa-trash-alt"></i>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Invoice Summary Footer */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            marginTop: "2rem",
+            paddingTop: "1.5rem",
+            borderTop: "2px solid var(--border)",
+            flexWrap: "wrap",
+            gap: "1.5rem",
+          }}
+        >
+          <div>
+            <button
+              type="button"
+              onClick={addRow}
+              className="btn-modern btn-secondary-modern"
+              style={{ fontSize: "0.88rem" }}
+            >
+              <i className="fa fa-plus"></i> Add Item Line
+            </button>
+          </div>
+
+          <div
+            style={{
+              minWidth: "260px",
+              background: "#f8fafc",
+              borderRadius: "var(--radius-md)",
+              padding: "1rem 1.25rem",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "0.5rem",
+                fontSize: "0.9rem",
+                color: "var(--text-muted)",
+              }}
+            >
+              <span>Subtotal</span>
+              <span>NRs. {grandTotal.toFixed(2)}</span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "0.75rem",
+                fontSize: "0.9rem",
+                color: "var(--text-muted)",
+              }}
+            >
+              <span>Tax (0%)</span>
+              <span>NRs. 0.00</span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: "1.25rem",
+                fontWeight: 800,
+                color: "var(--primary)",
+                borderTop: "1px solid var(--border)",
+                paddingTop: "0.6rem",
+              }}
+            >
+              <span>Grand Total</span>
+              <span>NRs. {grandTotal.toFixed(2)}</span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modern Receipt Preview & Print Modal */}
+      <ReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        billData={receiptBillData}
+      />
     </div>
   );
 };
