@@ -2,9 +2,11 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { useAuth } from "../context/AuthContext";
 import { useApi } from "../services/api";
 import { useToast } from "../context/ToastContext";
+import { useLanguage } from "../context/LanguageContext";
 import ReceiptModal from "../components/ReceiptModal";
 
 const NewBilling = () => {
+  const { t } = useLanguage();
   const [items, setItems] = useState([
     { Name: "", Price: 0, Quantity: 1, Total: 0 },
   ]);
@@ -86,6 +88,13 @@ const NewBilling = () => {
   // Handle price or quantity numeric changes
   const handleFieldChange = (index, field, value) => {
     const list = [...items];
+    if (value === "") {
+      list[index][field] = "";
+      list[index].Total = 0;
+      setItems(list);
+      return;
+    }
+
     const numVal = parseFloat(value) || 0;
     list[index][field] = numVal;
 
@@ -202,10 +211,10 @@ const NewBilling = () => {
         <div>
           <h1 className="page-title">
             <i className="fa fa-receipt" style={{ color: "var(--primary)" }}></i>
-            POS Billing Terminal
+            {t("posHeaderTitle")}
           </h1>
           <p className="page-subtitle">
-            Generate invoices, auto-fill unit prices, deduct inventory stock, and record sales.
+            {t("posHeaderSubtitle")}
           </p>
         </div>
 
@@ -215,9 +224,9 @@ const NewBilling = () => {
             onClick={handleOpenReceiptPreview}
             className="btn-modern btn-secondary-modern"
             disabled={grandTotal <= 0}
-            title="Preview or print customer receipt"
+            title={t("previewReceipt")}
           >
-            <i className="fa fa-receipt"></i> Preview Receipt
+            <i className="fa fa-receipt"></i> {t("previewReceipt")}
           </button>
 
           <button
@@ -225,15 +234,15 @@ const NewBilling = () => {
             onClick={handleSubmit}
             className="btn-modern btn-primary-modern"
             disabled={isSubmitting || grandTotal <= 0}
-            title="Complete checkout and print bill"
+            title={t("completeBill")}
           >
             {isSubmitting ? (
               <>
-                <i className="fa fa-spinner fa-spin"></i> Processing...
+                <i className="fa fa-spinner fa-spin"></i> {t("processingCheckout")}
               </>
             ) : (
               <>
-                <i className="fa fa-check-circle"></i> Complete &amp; Save
+                <i className="fa fa-check-circle"></i> {t("completeBill")}
               </>
             )}
           </button>
@@ -261,16 +270,16 @@ const NewBilling = () => {
           <div>
             <div
               style={{
-                fontSize: "1.5rem",
+                fontSize: "1.45rem",
                 fontWeight: 800,
                 color: "var(--text-main)",
                 letterSpacing: "-0.02em",
               }}
             >
-              Store<span style={{ color: "var(--primary)" }}>Flow</span>
+              {t("brandName")}<span style={{ color: "var(--primary)" }}> {t("brandSubtitle")}</span>
             </div>
             <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              Tax Invoice &amp; Customer Receipt Terminal
+              {t("posHeaderTitle")}
             </div>
           </div>
 
@@ -285,10 +294,10 @@ const NewBilling = () => {
               {invoiceNumber}
             </div>
             <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              Date: {currentDate}
+              {t("date")}: {currentDate}
             </div>
             <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              Cashier: {user?.name || user?.email}
+              {t("cashier")}: {user?.name || user?.email}
             </div>
           </div>
         </div>
@@ -314,10 +323,10 @@ const NewBilling = () => {
                   letterSpacing: "0.05em",
                 }}
               >
-                <th style={{ padding: "0.75rem 1rem", width: "40%" }}>Product Name</th>
-                <th style={{ padding: "0.75rem 1rem", width: "20%" }}>Price (NRs)</th>
-                <th style={{ padding: "0.75rem 1rem", width: "15%" }}>Qty</th>
-                <th style={{ padding: "0.75rem 1rem", width: "20%" }}>Total (NRs)</th>
+                <th style={{ padding: "0.75rem 1rem", width: "40%" }}>{t("productName")}</th>
+                <th style={{ padding: "0.75rem 1rem", width: "20%" }}>{t("unitPrice")}</th>
+                <th style={{ padding: "0.75rem 1rem", width: "15%" }}>{t("piecesQty")}</th>
+                <th style={{ padding: "0.75rem 1rem", width: "20%" }}>{t("lineTotal")}</th>
                 <th style={{ padding: "0.75rem 0.5rem", width: "5%" }}></th>
               </tr>
             </thead>
@@ -326,6 +335,26 @@ const NewBilling = () => {
                 const matchedCatalogItem = catalog.find(
                   (c) => c.Name.trim().toLowerCase() === item.Name.trim().toLowerCase()
                 );
+
+                // Calculate total quantity of this specific product being purchased across all rows
+                const totalBilledPieces = matchedCatalogItem
+                  ? items
+                      .filter(
+                        (it) =>
+                          it.Name &&
+                          it.Name.trim().toLowerCase() ===
+                            matchedCatalogItem.Name.trim().toLowerCase()
+                      )
+                      .reduce((sum, it) => sum + (Number(it.Quantity) || 0), 0)
+                  : 0;
+
+                const initialStock = matchedCatalogItem
+                  ? Number(matchedCatalogItem.Quantity) || 0
+                  : 0;
+                const liveRemainingStock = initialStock - totalBilledPieces;
+                const isExceeded = matchedCatalogItem && liveRemainingStock < 0;
+                const isLowStock =
+                  matchedCatalogItem && liveRemainingStock <= 5 && liveRemainingStock >= 0;
 
                 return (
                   <tr
@@ -340,7 +369,7 @@ const NewBilling = () => {
                         list={`catalog-list-${index}`}
                         type="text"
                         className="form-control-modern"
-                        placeholder="Select or type product..."
+                        placeholder={t("selectOrTypeProduct")}
                         value={item.Name}
                         onChange={(e) => handleNameChange(index, e.target.value)}
                       />
@@ -355,16 +384,39 @@ const NewBilling = () => {
                         <div
                           style={{
                             fontSize: "0.75rem",
-                            color:
-                              matchedCatalogItem.Quantity > 5
-                                ? "var(--success)"
-                                : "var(--warning)",
-                            marginTop: "0.2rem",
+                            color: isExceeded
+                              ? "var(--danger)"
+                              : isLowStock
+                              ? "var(--warning)"
+                              : "var(--success)",
+                            marginTop: "0.25rem",
                             paddingLeft: "0.25rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.35rem",
+                            fontWeight: 600,
                           }}
                         >
-                          <i className="fa fa-info-circle"></i> Available Stock:{" "}
-                          <strong>{matchedCatalogItem.Quantity}</strong>
+                          <i
+                            className={`fa ${
+                              isExceeded
+                                ? "fa-triangle-exclamation"
+                                : isLowStock
+                                ? "fa-circle-exclamation"
+                                : "fa-cubes"
+                            }`}
+                          ></i>
+                          <span>
+                            {t("availableStock")} <strong>{liveRemainingStock}</strong> {t("remaining")}
+                            <span style={{ color: "var(--text-muted)", marginLeft: "0.3rem", fontWeight: 400 }}>
+                              ({t("initialStock")} {initialStock})
+                            </span>
+                            {isExceeded && (
+                              <span style={{ color: "var(--danger)", marginLeft: "0.3rem" }}>
+                                &bull; {t("exceedsStock", { count: Math.abs(liveRemainingStock) })}
+                              </span>
+                            )}
+                          </span>
                         </div>
                       )}
                     </td>
@@ -381,16 +433,73 @@ const NewBilling = () => {
                       />
                     </td>
                     <td style={{ padding: "0.6rem 0.5rem" }}>
-                      <input
-                        type="number"
-                        step="1"
-                        min="1"
-                        className="form-control-modern"
-                        value={item.Quantity}
-                        onChange={(e) =>
-                          handleFieldChange(index, "Quantity", e.target.value)
-                        }
-                      />
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = Number(item.Quantity) || 0;
+                            if (cur > 1) {
+                              handleFieldChange(index, "Quantity", cur - 1);
+                            }
+                          }}
+                          className="btn-modern btn-secondary-modern"
+                          style={{
+                            padding: "0.4rem 0.55rem",
+                            fontSize: "0.75rem",
+                            height: "36px",
+                            minWidth: "30px",
+                          }}
+                          title="Decrease 1 piece"
+                          disabled={Number(item.Quantity) <= 1}
+                        >
+                          <i className="fa fa-minus"></i>
+                        </button>
+                        <input
+                          type="number"
+                          step="1"
+                          min="1"
+                          className="form-control-modern"
+                          style={{
+                            textAlign: "center",
+                            borderColor: isExceeded ? "var(--danger)" : undefined,
+                            fontWeight: 600,
+                          }}
+                          value={item.Quantity}
+                          onChange={(e) =>
+                            handleFieldChange(index, "Quantity", e.target.value)
+                          }
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = Number(item.Quantity) || 0;
+                            handleFieldChange(index, "Quantity", cur + 1);
+                          }}
+                          className="btn-modern btn-secondary-modern"
+                          style={{
+                            padding: "0.4rem 0.55rem",
+                            fontSize: "0.75rem",
+                            height: "36px",
+                            minWidth: "30px",
+                          }}
+                          title="Increase 1 piece"
+                        >
+                          <i className="fa fa-plus"></i>
+                        </button>
+                      </div>
+                      {isExceeded && (
+                        <div
+                          style={{
+                            fontSize: "0.72rem",
+                            color: "var(--danger)",
+                            fontWeight: 600,
+                            marginTop: "0.2rem",
+                            textAlign: "center",
+                          }}
+                        >
+                          {t("overBy", { count: Math.abs(liveRemainingStock) })}
+                        </div>
+                      )}
                     </td>
                     <td
                       style={{
@@ -451,7 +560,7 @@ const NewBilling = () => {
               className="btn-modern btn-secondary-modern"
               style={{ fontSize: "0.88rem" }}
             >
-              <i className="fa fa-plus"></i> Add Item Line
+              <i className="fa fa-plus"></i> {t("addItemRow")}
             </button>
           </div>
 
@@ -473,7 +582,7 @@ const NewBilling = () => {
                 color: "var(--text-muted)",
               }}
             >
-              <span>Subtotal</span>
+              <span>{t("subtotal")}</span>
               <span>NRs. {grandTotal.toFixed(2)}</span>
             </div>
             <div
@@ -485,7 +594,7 @@ const NewBilling = () => {
                 color: "var(--text-muted)",
               }}
             >
-              <span>Tax (0%)</span>
+              <span>{t("taxZero")}</span>
               <span>NRs. 0.00</span>
             </div>
             <div
@@ -499,7 +608,7 @@ const NewBilling = () => {
                 paddingTop: "0.6rem",
               }}
             >
-              <span>Grand Total</span>
+              <span>{t("grandTotal")}</span>
               <span>NRs. {grandTotal.toFixed(2)}</span>
             </div>
           </div>

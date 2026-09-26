@@ -6,9 +6,11 @@ import { useToast } from "../context/ToastContext";
 import StatCard from "../components/StatCard";
 import AddProductModal from "../components/AddProductModal";
 import ResponsiveDataTable from "../components/ResponsiveDataTable";
+import { useLanguage } from "../context/LanguageContext";
 
 function ShowAllProducts() {
   const { isAuthenticated, isLoading, error } = useAuth();
+  const { t } = useLanguage();
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRowID, setSelectedRowID] = useState("");
@@ -97,7 +99,7 @@ function ShowAllProducts() {
     },
     {
       key: "Name",
-      label: "Product Name",
+      label: t("productName"),
       sortable: true,
       render: (val) => (
         <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
@@ -107,7 +109,7 @@ function ShowAllProducts() {
     },
     {
       key: "Price",
-      label: "Unit Price",
+      label: t("unitPrice"),
       width: "160px",
       sortable: true,
       render: (val) => (
@@ -118,20 +120,20 @@ function ShowAllProducts() {
     },
     {
       key: "Quantity",
-      label: "Stock Status",
+      label: t("status"),
       width: "180px",
       sortable: true,
       render: (val) => {
         const qty = Number(val) || 0;
         let badgeClass = "badge-in-stock";
-        let label = `${qty} in stock`;
+        let label = `${qty} ${t("inStock")}`;
 
         if (qty <= 0) {
           badgeClass = "badge-out-stock";
-          label = `Out of stock (${qty})`;
+          label = `${t("outOfStock")} (${qty})`;
         } else if (qty <= 5) {
           badgeClass = "badge-low-stock";
-          label = `Low stock (${qty})`;
+          label = `${t("lowStock")} (${qty})`;
         }
 
         return <span className={`badge-status ${badgeClass}`}>{label}</span>;
@@ -143,12 +145,12 @@ function ShowAllProducts() {
   const deleteProduct = (idToDelete) => {
     const targetId = idToDelete || selectedRowID;
     if (!targetId) return;
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    if (!window.confirm(t("confirmDelete", { name: "this product" }))) return;
 
     api
       .delete("/delete/" + targetId)
       .then(() => {
-        toast.success("Product deleted successfully!");
+        toast.success(t("productDeletedSuccess"));
         if (selectedRowID === targetId) {
           setSelectedRowID("");
         }
@@ -227,7 +229,7 @@ function ShowAllProducts() {
               style={{
                 width: "64px",
                 height: "64px",
-                background: "#eef2ff",
+                background: "var(--primary-light)",
                 color: "var(--primary)",
                 borderRadius: "50%",
                 display: "flex",
@@ -240,7 +242,7 @@ function ShowAllProducts() {
               <i className="fa fa-boxes-stacked"></i>
             </div>
             <h3 style={{ fontWeight: 800, marginBottom: "0.5rem" }}>
-              StoreFlow Inventory
+              Gajurmukhi Veterinary Inventory
             </h3>
             <p
               style={{
@@ -252,7 +254,7 @@ function ShowAllProducts() {
               Sign in to manage your inventory catalog, monitor stock thresholds, and record sales in real time.
             </p>
             <a href="/" className="btn-modern btn-primary-modern" style={{ display: "inline-flex" }}>
-              <i className="fa fa-arrow-right-to-bracket"></i> Sign In to StoreFlow
+              <i className="fa fa-arrow-right-to-bracket"></i> Sign In to Gajurmukhi Veterinary
             </a>
           </div>
         )}
@@ -267,10 +269,10 @@ function ShowAllProducts() {
         <div>
           <h1 className="page-title">
             <i className="fa fa-boxes-stacked" style={{ color: "var(--primary)" }}></i>
-            Products & Inventory
+            {t("catalogTitle")}
           </h1>
           <p className="page-subtitle">
-            Manage your store&apos;s product catalog, live stock status, and pricing.
+            {t("catalogSubtitle")}
           </p>
         </div>
 
@@ -282,24 +284,24 @@ function ShowAllProducts() {
             }}
             className="btn-modern btn-primary-modern"
           >
-            <i className="fa fa-plus"></i> Add Product
+            <i className="fa fa-plus"></i> {t("addProduct")}
           </button>
           <button
             onClick={fetchProducts}
             className="btn-modern btn-secondary-modern"
             disabled={isFetching}
-            title="Refresh Inventory"
+            title={t("refresh")}
           >
             <i className={`fa fa-sync-alt ${isFetching ? "fa-spin" : ""}`}></i>
-            <span>{isFetching ? "Refreshing..." : "Refresh"}</span>
+            <span>{isFetching ? t("refreshing") : t("refresh")}</span>
           </button>
           <button
             onClick={() => deleteProduct()}
             className="btn-modern btn-danger-modern"
             disabled={!selectedRowID}
-            title="Delete Selected Item"
+            title={t("delete")}
           >
-            <i className="fa fa-trash-alt"></i> Delete
+            <i className="fa fa-trash-alt"></i> {t("delete")}
           </button>
         </div>
       </div>
@@ -307,32 +309,32 @@ function ShowAllProducts() {
       {/* KPI Stats Grid */}
       <div className="stat-grid">
         <StatCard
-          title="Total Products"
+          title={t("totalProducts")}
           value={stats.totalItems}
-          subtitle="Active SKUs in catalog"
+          subtitle={t("activeSKUs")}
           icon="fa-box"
-          color="indigo"
+          color="forest"
         />
         <StatCard
-          title="Total Stock Units"
+          title={t("totalStockUnits")}
           value={stats.totalUnits}
-          subtitle="Total available items"
+          subtitle={t("totalAvailableItems")}
           icon="fa-cubes"
           color="emerald"
         />
         <StatCard
-          title="Inventory Valuation"
+          title={t("inventoryValuation")}
           value={`NRs. ${stats.totalValuation}`}
-          subtitle="Gross catalog value"
+          subtitle={t("grossCatalogValue")}
           icon="fa-money-bill-wave"
           color="emerald"
         />
         <StatCard
-          title="Low Stock Alerts"
+          title={t("lowStockAlerts")}
           value={stats.lowStockCount}
-          subtitle="Items with ≤ 5 units"
+          subtitle={t("lowStockWarningThreshold")}
           icon="fa-triangle-exclamation"
-          color={stats.lowStockCount > 0 ? "amber" : "indigo"}
+          color={stats.lowStockCount > 0 ? "rose" : "slate"}
         />
       </div>
 
@@ -419,7 +421,7 @@ function ShowAllProducts() {
           <input
             type="text"
             className="search-input"
-            placeholder="Search by product name or ID..."
+            placeholder={t("searchProductsPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -434,7 +436,7 @@ function ShowAllProducts() {
                 cursor: "pointer",
                 padding: "0 0.5rem",
               }}
-              title="Clear search"
+              title={t("clear")}
             >
               <i className="fa fa-times-circle"></i>
             </button>
@@ -442,8 +444,7 @@ function ShowAllProducts() {
         </div>
 
         <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-          Showing <strong>{filteredProducts.length}</strong> of{" "}
-          <strong>{products.length}</strong> items
+          {t("showingProducts", { count: filteredProducts.length, total: products.length })}
         </div>
       </div>
 
@@ -454,23 +455,23 @@ function ShowAllProducts() {
         keyField="ID"
         selectedId={selectedRowID}
         onSelect={(product) => setSelectedRowID(product.ID)}
-        exportFileName="StoreFlow-Products"
-        emptyTitle="No products found"
+        exportFileName="Gajurmukhi-Veterinary-Products"
+        emptyTitle={t("noProductsFound")}
         emptyMessage={
           searchTerm
-            ? `No products matched "${searchTerm}". Try clearing your search filter.`
-            : "Your inventory is currently empty. Click 'Add Product' above to create your first item!"
+            ? t("noProductsMatch", { term: searchTerm })
+            : t("inventoryEmpty")
         }
         renderMobileHeader={(p) => {
           const qty = Number(p.Quantity) || 0;
           let badgeClass = "badge-in-stock";
-          let label = `${qty} in stock`;
+          let label = `${qty} ${t("inStock")}`;
           if (qty <= 0) {
             badgeClass = "badge-out-stock";
-            label = `Out of stock`;
+            label = `${t("outOfStock")} (${qty})`;
           } else if (qty <= 5) {
             badgeClass = "badge-low-stock";
-            label = `Low stock (${qty})`;
+            label = `${t("lowStock")} (${qty})`;
           }
           return {
             title: p.Name,
@@ -496,9 +497,9 @@ function ShowAllProducts() {
                 setProductToEdit(row);
                 setIsAddModalOpen(true);
               }}
-              title="Edit Product"
+              title={t("edit")}
             >
-              <i className="fa fa-pen-to-square"></i> Edit
+              <i className="fa fa-pen-to-square"></i> {t("edit")}
             </button>
             <button
               type="button"
@@ -508,7 +509,7 @@ function ShowAllProducts() {
                 e.stopPropagation();
                 deleteProduct(row.ID);
               }}
-              title="Delete Product"
+              title={t("delete")}
             >
               <i className="fa fa-trash-alt"></i>
             </button>

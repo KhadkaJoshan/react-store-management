@@ -65,7 +65,7 @@
 
 .format-pill-btn.active {
   background: #ffffff;
-  color: var(--primary, #4f46e5);
+  color: var(--primary, #15803d);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
@@ -140,7 +140,7 @@
 }
 
 .receipt-brand-name span {
-  color: #4f46e5;
+  color: var(--primary, #15803d);
 }
 
 .receipt-subtitle {

@@ -1,8 +1,11 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { useLanguage } from "../context/LanguageContext";
 
 const Layout = () => {
+  const { t } = useLanguage();
+
   return (
     <div className="app-container">
       <Navbar />
@@ -22,8 +25,10 @@ const Layout = () => {
       >
         <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
           &copy; {new Date().getFullYear()}{" "}
-          <strong style={{ color: "var(--text-main)" }}>StoreFlow</strong> &mdash; Modern
-          Inventory Management & POS Solution.
+          <strong style={{ color: "var(--text-main)" }}>
+            {t("brandName")} {t("brandSubtitle")}
+          </strong>{" "}
+          &mdash; {t("footerText")}
         </div>
       </footer>
     </div>

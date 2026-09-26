@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 import { useNavigate } from "react-router-dom";
+import LanguageToggle from "../components/LanguageToggle";
 
 const SignInWithGoogle = () => {
   const { login, isAuthenticated, isLoading } = useAuth();
+  const { t } = useLanguage();
   const [authError, setAuthError] = useState("");
   const navigate = useNavigate();
 
@@ -54,8 +57,6 @@ const SignInWithGoogle = () => {
     <div
       style={{
         minHeight: "100vh",
-        background:
-          "radial-gradient(1200px circle at 50% -10%, rgba(79, 70, 229, 0.08) 0%, rgba(248, 250, 252, 1) 70%)",
         backgroundColor: "var(--bg-body)",
         display: "flex",
         flexDirection: "column",
@@ -63,34 +64,6 @@ const SignInWithGoogle = () => {
         overflowX: "hidden",
       }}
     >
-      {/* Decorative ambient background glows */}
-      <div
-        style={{
-          position: "absolute",
-          top: "-5%",
-          left: "15%",
-          width: "450px",
-          height: "450px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(79, 70, 229, 0.07) 0%, rgba(255, 255, 255, 0) 70%)",
-          filter: "blur(60px)",
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: "20%",
-          right: "10%",
-          width: "400px",
-          height: "400px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(14, 165, 233, 0.06) 0%, rgba(255, 255, 255, 0) 70%)",
-          filter: "blur(50px)",
-          pointerEvents: "none",
-        }}
-      />
-
       {/* Top Brand & Status Navigation Bar */}
       <header
         style={{
@@ -110,14 +83,14 @@ const SignInWithGoogle = () => {
             style={{
               width: "36px",
               height: "36px",
-              borderRadius: "10px",
-              background: "linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%)",
+              borderRadius: "8px",
+              background: "var(--primary)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "#ffffff",
               fontSize: "1.1rem",
-              boxShadow: "0 4px 10px rgba(79, 70, 229, 0.3)",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
             }}
           >
             <i className="fa fa-cubes"></i>
@@ -125,18 +98,21 @@ const SignInWithGoogle = () => {
           <div>
             <span
               style={{
-                fontSize: "1.2rem",
+                fontSize: "1.15rem",
                 fontWeight: 800,
                 color: "var(--text-main)",
                 letterSpacing: "-0.03em",
               }}
             >
-              Store<span style={{ color: "var(--primary)" }}>Flow</span>
+              {t("brandName")}<span style={{ color: "var(--primary)" }}> {t("brandSubtitle")}</span>
             </span>
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {/* Language Toggle Button */}
+          <LanguageToggle />
+
           <div
             style={{
               display: "flex",
@@ -162,7 +138,7 @@ const SignInWithGoogle = () => {
                 display: "inline-block",
               }}
             />
-            System Operational
+            {t("navSystemOnline")}
           </div>
         </div>
       </header>
@@ -194,17 +170,16 @@ const SignInWithGoogle = () => {
               gap: "0.5rem",
               padding: "0.4rem 1rem",
               borderRadius: "var(--radius-full)",
-              background: "#eef2ff",
-              border: "1px solid #c7d2fe",
+              background: "var(--primary-light)",
+              border: "1px solid #bbf7d0",
               color: "var(--primary)",
               fontSize: "0.85rem",
               fontWeight: 600,
               marginBottom: "1.25rem",
-              boxShadow: "0 2px 5px rgba(79, 70, 229, 0.08)",
             }}
           >
             <i className="fa fa-shield-halved" style={{ color: "var(--primary)" }}></i>
-            Enterprise Grade Inventory & POS Platform
+            {t("enterprisePill")}
           </div>
 
           {/* Hero Heading */}
@@ -218,15 +193,13 @@ const SignInWithGoogle = () => {
               marginBottom: "1rem",
             }}
           >
-            Effortless Inventory,{" "}
+            {t("heroTitle1")}{" "}
             <span
               style={{
-                background: "linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+                color: "var(--primary)",
               }}
             >
-              Instant Billing.
+              {t("heroTitle2")}
             </span>
           </h1>
 
@@ -240,8 +213,7 @@ const SignInWithGoogle = () => {
               lineHeight: 1.6,
             }}
           >
-            Track stock levels in real time, generate fast POS receipts, and analyze revenue
-            with an all-in-one platform built for modern retail.
+            {t("heroDescription")}
           </p>
 
           {/* Sign-In Card */}
@@ -263,15 +235,15 @@ const SignInWithGoogle = () => {
               style={{
                 width: "56px",
                 height: "56px",
-                borderRadius: "14px",
-                background: "linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%)",
+                borderRadius: "12px",
+                background: "var(--primary)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 color: "#ffffff",
                 fontSize: "1.5rem",
                 margin: "0 auto 1.25rem auto",
-                boxShadow: "0 8px 20px rgba(79, 70, 229, 0.35)",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.12)",
               }}
             >
               <i className="fa fa-cubes"></i>
@@ -286,7 +258,7 @@ const SignInWithGoogle = () => {
                 letterSpacing: "-0.02em",
               }}
             >
-              Welcome to StoreFlow
+              {t("welcomeLogin")}
             </h3>
             <p
               style={{
@@ -296,7 +268,7 @@ const SignInWithGoogle = () => {
                 lineHeight: 1.4,
               }}
             >
-              Sign in with your verified account to access your inventory and POS terminal.
+              {t("loginSubtitle")}
             </p>
 
             {/* Error banner if authentication reports an error */}
@@ -366,7 +338,7 @@ const SignInWithGoogle = () => {
               }}
             >
               <i className="fa fa-shield-check" style={{ color: "var(--success)" }}></i>
-              <span>Google OAuth 2.0 Verified &bull; 256-Bit SSL Encrypted</span>
+              <span>{t("googleVerified")}</span>
             </div>
           </div>
 
@@ -395,8 +367,8 @@ const SignInWithGoogle = () => {
                 style={{
                   width: "42px",
                   height: "42px",
-                  borderRadius: "10px",
-                  background: "#eef2ff",
+                  borderRadius: "8px",
+                  background: "var(--primary-light)",
                   color: "var(--primary)",
                   display: "flex",
                   alignItems: "center",
@@ -415,7 +387,7 @@ const SignInWithGoogle = () => {
                   marginBottom: "0.35rem",
                 }}
               >
-                Real-Time Inventory
+                {t("feature1Title")}
               </h4>
               <p
                 style={{
@@ -424,8 +396,7 @@ const SignInWithGoogle = () => {
                   lineHeight: 1.55,
                 }}
               >
-                Multi-tenant product catalogs with instant stock tracking, valuation totals,
-                and low-inventory warning alerts.
+                {t("feature1Desc")}
               </p>
             </div>
 
@@ -464,7 +435,7 @@ const SignInWithGoogle = () => {
                   marginBottom: "0.35rem",
                 }}
               >
-                Smart POS Billing
+                {t("feature2Title")}
               </h4>
               <p
                 style={{
@@ -473,8 +444,7 @@ const SignInWithGoogle = () => {
                   lineHeight: 1.55,
                 }}
               >
-                Instant unit price population, live subtotal & tax calculation, atomic stock
-                decrements, and PDF receipt printing.
+                {t("feature2Desc")}
               </p>
             </div>
 
@@ -513,7 +483,7 @@ const SignInWithGoogle = () => {
                   marginBottom: "0.35rem",
                 }}
               >
-                Sales Intelligence
+                {t("feature3Title")}
               </h4>
               <p
                 style={{
@@ -522,8 +492,7 @@ const SignInWithGoogle = () => {
                   lineHeight: 1.55,
                 }}
               >
-                Automated revenue logging, historical transaction archives, average order value,
-                and real-time sales reporting.
+                {t("feature3Desc")}
               </p>
             </div>
           </div>
@@ -544,8 +513,8 @@ const SignInWithGoogle = () => {
       >
         <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
           &copy; {new Date().getFullYear()}{" "}
-          <strong style={{ color: "var(--text-main)" }}>StoreFlow</strong> &mdash; Modern
-          Inventory Management & POS Solution.
+          <strong style={{ color: "var(--text-main)" }}>{t("brandName")} {t("brandSubtitle")}</strong> &mdash;{" "}
+          {t("footerText")}
         </div>
       </footer>
     </div>

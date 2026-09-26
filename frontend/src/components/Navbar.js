@@ -1,15 +1,18 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
+import LanguageToggle from "./LanguageToggle";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
 
   const navLinks = [
-    { to: "/viewproducts", label: "Products", icon: "fa-boxes-stacked" },
-    { to: "/newbilling", label: "New Bill", icon: "fa-receipt" },
-    { to: "/sales", label: "Sales Report", icon: "fa-chart-line" },
+    { to: "/viewproducts", label: t("navProducts"), icon: "fa-boxes-stacked" },
+    { to: "/newbilling", label: t("navNewBill"), icon: "fa-receipt" },
+    { to: "/sales", label: t("navSalesReport"), icon: "fa-chart-line" },
   ];
 
   const currentDate = new Date().toLocaleDateString(undefined, {
@@ -56,14 +59,14 @@ const Navbar = () => {
             style={{
               width: "38px",
               height: "38px",
-              borderRadius: "10px",
-              background: "linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%)",
+              borderRadius: "8px",
+              background: "var(--primary)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "#ffffff",
               fontSize: "1.1rem",
-              boxShadow: "0 4px 10px rgba(79, 70, 229, 0.3)",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
             }}
           >
             <i className="fa fa-cubes"></i>
@@ -71,14 +74,14 @@ const Navbar = () => {
           <div>
             <div
               style={{
-                fontSize: "1.2rem",
+                fontSize: "1.15rem",
                 fontWeight: 800,
                 color: "var(--text-main)",
                 letterSpacing: "-0.03em",
                 lineHeight: 1.1,
               }}
             >
-              Store<span style={{ color: "var(--primary)" }}>Flow</span>
+              {t("brandName")}<span style={{ color: "var(--primary)" }}> {t("brandSubtitle")}</span>
             </div>
             <div
               style={{
@@ -87,7 +90,7 @@ const Navbar = () => {
                 fontWeight: 500,
               }}
             >
-              Inventory & POS
+              {t("brandTagline")}
             </div>
           </div>
         </Link>
@@ -104,15 +107,14 @@ const Navbar = () => {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "0.5rem",
-                  padding: "0.55rem 1rem",
-                  borderRadius: "var(--radius-full)",
+                  padding: "0.5rem 1rem",
+                  borderRadius: "var(--radius-md)",
                   fontSize: "0.9rem",
-                  fontWeight: isActive ? 700 : 500,
+                  fontWeight: isActive ? 600 : 500,
                   color: isActive ? "#ffffff" : "var(--text-muted)",
                   background: isActive ? "var(--primary)" : "transparent",
                   textDecoration: "none",
                   transition: "var(--transition)",
-                  boxShadow: isActive ? "0 4px 12px rgba(79, 70, 229, 0.35)" : "none",
                 }}
               >
                 <i className={`fa ${link.icon}`}></i>
@@ -123,7 +125,10 @@ const Navbar = () => {
         </nav>
 
         {/* User Info & Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flexWrap: "wrap" }}>
+          {/* Language Toggle Button */}
+          <LanguageToggle />
+
           {/* Date Badge */}
           <div
             style={{
@@ -207,10 +212,10 @@ const Navbar = () => {
             onClick={() => logout()}
             className="btn-modern btn-danger-modern"
             style={{ padding: "0.45rem 0.85rem", fontSize: "0.85rem" }}
-            title="Log Out"
+            title={t("navLogOut")}
           >
             <i className="fa fa-sign-out-alt"></i>
-            <span>Log Out</span>
+            <span>{t("navLogOut")}</span>
           </button>
         </div>
       </div>

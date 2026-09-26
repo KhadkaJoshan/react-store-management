@@ -3,13 +3,17 @@ import "../App.css";
 import { useAuth } from "../context/AuthContext";
 import { useApi, getBackendHealthUrl } from "../services/api";
 import { useToast } from "../context/ToastContext";
+import { useLanguage } from "../context/LanguageContext";
 import StatCard from "../components/StatCard";
 import ResponsiveDataTable from "../components/ResponsiveDataTable";
+import SalesAnalyticsCharts from "../components/SalesAnalyticsCharts";
 
 function Sales() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { t } = useLanguage();
   const [sales, setSales] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState("combined"); // "combined" | "analytics" | "table"
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState("");
 
@@ -91,7 +95,7 @@ function Sales() {
   const columns = [
     {
       key: "SalesID",
-      label: "Receipt #",
+      label: t("receiptCol"),
       width: "110px",
       sortable: true,
       render: (val) => (
@@ -102,7 +106,7 @@ function Sales() {
     },
     {
       key: "SName",
-      label: "Product Sold",
+      label: t("productSold"),
       sortable: true,
       render: (val) => (
         <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
@@ -112,7 +116,7 @@ function Sales() {
     },
     {
       key: "SPrice",
-      label: "Unit Price",
+      label: t("unitPrice"),
       width: "140px",
       sortable: true,
       render: (val) => (
@@ -121,27 +125,27 @@ function Sales() {
     },
     {
       key: "SQuantity",
-      label: "Quantity Sold",
+      label: t("quantitySold"),
       width: "150px",
       sortable: true,
       render: (val) => (
         <span
           style={{
-            background: "#eef2ff",
-            color: "#4f46e5",
+            background: "var(--primary-light)",
+            color: "var(--primary)",
             padding: "0.2rem 0.6rem",
             borderRadius: "var(--radius-full)",
             fontWeight: 600,
             fontSize: "0.85rem",
           }}
         >
-          {val} units
+          {val} {t("units")}
         </span>
       ),
     },
     {
       key: "DOS",
-      label: "Date of Sale",
+      label: t("dateOfSale"),
       width: "160px",
       sortable: true,
       render: (val) => (
@@ -156,7 +160,7 @@ function Sales() {
     },
     {
       key: "Stotal",
-      label: "Total Amount",
+      label: t("totalAmount"),
       width: "160px",
       sortable: true,
       render: (val) => (
@@ -201,12 +205,11 @@ function Sales() {
           <h1 className="page-title">
             <i
               className="fa fa-chart-line"
-              style={{ color: "var(--primary)" }}
-            ></i>
-            Sales & Revenue Analytics
+              style={{ color: "var(--primary)" }}></i>
+            {t("salesTitle")}
           </h1>
           <p className="page-subtitle">
-            Track checkout transactions, aggregate sales revenues, and customer purchase trends.
+            {t("salesSubtitle")}
           </p>
         </div>
 
@@ -215,10 +218,10 @@ function Sales() {
             onClick={fetchSales}
             className="btn-modern btn-secondary-modern"
             disabled={isFetching}
-            title="Refresh Sales Data"
+            title={t("refresh")}
           >
             <i className={`fa fa-sync-alt ${isFetching ? "fa-spin" : ""}`}></i>
-            <span>{isFetching ? "Refreshing..." : "Refresh"}</span>
+            <span>{isFetching ? t("refreshing") : t("refresh")}</span>
           </button>
         </div>
       </div>
@@ -226,32 +229,32 @@ function Sales() {
       {/* KPI Stats Grid */}
       <div className="stat-grid">
         <StatCard
-          title="Total Transactions"
+          title={t("totalTransactions")}
           value={stats.totalTransactions}
-          subtitle="Completed customer orders"
+          subtitle={t("completedCustomerOrders")}
           icon="fa-receipt"
-          color="indigo"
+          color="forest"
         />
         <StatCard
-          title="Total Revenue"
+          title={t("totalRevenue")}
           value={`NRs. ${stats.totalRevenue}`}
-          subtitle="Cumulative sales earnings"
+          subtitle={t("cumulativeEarnings")}
           icon="fa-sack-dollar"
           color="emerald"
         />
         <StatCard
-          title="Total Units Sold"
+          title={t("totalUnitsSold")}
           value={stats.totalUnitsSold}
-          subtitle="Items purchased by customers"
+          subtitle={t("itemsPurchased")}
           icon="fa-cart-shopping"
           color="amber"
         />
         <StatCard
-          title="Avg Order Value"
+          title={t("avgOrderValue")}
           value={`NRs. ${stats.avgOrderValue}`}
-          subtitle="Average revenue per sale"
+          subtitle={t("averagePerSale")}
           icon="fa-chart-pie"
-          color="indigo"
+          color="slate"
         />
       </div>
 
@@ -331,6 +334,13 @@ function Sales() {
         </div>
       )}
 
+      {/* Visual Sales Analytics Charts & Metrics */}
+      <SalesAnalyticsCharts
+        sales={filteredSales}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
+
       {/* Search Bar & Stats */}
       <div className="action-bar">
         <div className="search-input-wrapper">
@@ -338,7 +348,7 @@ function Sales() {
           <input
             type="text"
             className="search-input"
-            placeholder="Search by product, date, or receipt #..."
+            placeholder={t("searchSalesPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -353,7 +363,7 @@ function Sales() {
                 cursor: "pointer",
                 padding: "0 0.5rem",
               }}
-              title="Clear search"
+              title={t("clear")}
             >
               <i className="fa fa-times-circle"></i>
             </button>
@@ -361,39 +371,54 @@ function Sales() {
         </div>
 
         <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-          Showing <strong>{filteredSales.length}</strong> of{" "}
-          <strong>{sales.length}</strong> sales transactions
+          {t("showingSales", { count: filteredSales.length, total: sales.length })}
         </div>
       </div>
 
-      {/* Responsive Custom SaaS Data Table (Replaced AG Grid) */}
-      <ResponsiveDataTable
-        columns={columns}
-        data={filteredSales}
-        keyField="SalesID"
-        exportFileName="StoreFlow-Sales"
-        emptyTitle="No sales recorded"
-        emptyMessage={
-          searchTerm
-            ? `No sales matched "${searchTerm}". Try clearing your search filter.`
-            : "No sales records yet. Complete your first checkout in 'New Bill' to record a sale!"
-        }
-        renderMobileHeader={(s) => ({
-          title: s.SName,
-          subtitle: `Receipt #${s.SalesID} • ${s.DOS}`,
-          badge: (
-            <span
-              style={{
-                fontWeight: 700,
-                color: "var(--success)",
-                fontSize: "1rem",
-              }}
-            >
-              NRs. {Number(s.Stotal || 0).toFixed(2)}
-            </span>
-          ),
-        })}
-      />
+      {/* Responsive Custom SaaS Data Table */}
+      {viewMode !== "analytics" ? (
+        <ResponsiveDataTable
+          columns={columns}
+          data={filteredSales}
+          keyField="SalesID"
+          exportFileName="Gajurmukhi-Veterinary-Sales"
+          emptyTitle={t("noSalesRecorded")}
+          emptyMessage={
+            searchTerm
+              ? t("noProductsMatch", { term: searchTerm })
+              : t("noSalesYetMessage")
+          }
+          renderMobileHeader={(s) => ({
+            title: s.SName,
+            subtitle: `${t("receiptCol")} #${s.SalesID} • ${s.DOS}`,
+            badge: (
+              <span
+                style={{
+                  fontWeight: 700,
+                  color: "var(--success)",
+                  fontSize: "1rem",
+                }}
+              >
+                NRs. {Number(s.Stotal || 0).toFixed(2)}
+              </span>
+            ),
+          })}
+        />
+      ) : (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "1.5rem",
+            background: "#ffffff",
+            border: "1px dashed var(--border)",
+            borderRadius: "var(--radius-lg)",
+            color: "var(--text-muted)",
+            fontSize: "0.88rem",
+          }}
+        >
+          Currently in <strong>Visual Charts</strong> mode. Toggle to <strong>Combined View</strong> or <strong>Data Table</strong> in the controls above to inspect individual transaction line items.
+        </div>
+      )}
     </div>
   );
 }

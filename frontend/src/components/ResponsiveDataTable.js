@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from "react";
 import "./ResponsiveDataTable.css";
+import { useLanguage } from "../context/LanguageContext";
 
 /**
  * ResponsiveDataTable
- * High-performance, mobile-first responsive table component designed for StoreFlow.
+ * High-performance, mobile-first responsive table component designed for Gajurmukhi Veterinary.
  * Renders as a crisp, interactive table on desktop/tablet (>=768px) and automatically
  * adapts into clean, touch-friendly product/sales cards on mobile viewports (<768px).
  */
@@ -20,6 +21,7 @@ export default function ResponsiveDataTable({
   renderMobileHeader = null,
   initialPageSize = 10,
 }) {
+  const { t } = useLanguage();
   const [sortKey, setSortKey] = useState(null);
   const [sortDirection, setSortDirection] = useState("asc"); // 'asc' | 'desc'
   const [currentPage, setCurrentPage] = useState(1);
@@ -131,9 +133,11 @@ export default function ResponsiveDataTable({
       {/* Top Table Toolbar */}
       <div className="responsive-table-toolbar">
         <div className="responsive-table-stats">
-          Showing <strong>{Math.min(totalItems, (validCurrentPage - 1) * pageSize + 1)}</strong> to{" "}
-          <strong>{Math.min(totalItems, validCurrentPage * pageSize)}</strong> of{" "}
-          <strong>{totalItems}</strong> entries
+          {t("tableShowing", {
+            from: Math.min(totalItems, (validCurrentPage - 1) * pageSize + 1),
+            to: Math.min(totalItems, validCurrentPage * pageSize),
+            total: totalItems,
+          })}
         </div>
 
         <div className="responsive-table-actions">
@@ -145,7 +149,7 @@ export default function ResponsiveDataTable({
               title="Export filtered records to CSV"
             >
               <i className="fa fa-file-excel" style={{ color: "#10b981" }}></i>
-              <span>Export CSV</span>
+              <span>{t("exportCSV")}</span>
             </button>
           )}
         </div>
@@ -170,7 +174,7 @@ export default function ResponsiveDataTable({
                     {isSortable && (
                       <span className={`sort-icon ${isCurrentSort ? "active" : ""}`}>
                         {isCurrentSort ? (
-                          sortDirection === "asc" ? (
+                           sortDirection === "asc" ? (
                             <i className="fa fa-arrow-up"></i>
                           ) : (
                             <i className="fa fa-arrow-down"></i>
@@ -184,7 +188,7 @@ export default function ResponsiveDataTable({
                 );
               })}
               {renderActions && (
-                <th style={{ width: "110px", textAlign: "right" }}>Actions</th>
+                <th style={{ width: "110px", textAlign: "right" }}>{t("actions")}</th>
               )}
             </tr>
           </thead>
@@ -310,7 +314,7 @@ export default function ResponsiveDataTable({
       {totalPages > 1 && (
         <div className="responsive-table-footer">
           <div className="page-size-selector">
-            <span>Rows per page:</span>
+            <span>{t("rowsPerPage")}</span>
             <select
               className="page-size-select"
               value={pageSize}

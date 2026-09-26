@@ -1,6 +1,6 @@
 import React from "react";
 
-const StatCard = ({ title, value, subtitle, icon, color = "indigo" }) => {
+const StatCard = ({ title, value, subtitle, icon, color = "forest" }) => {
   return (
     <div className="stat-card">
       <div className={`stat-icon-wrapper stat-icon-${color}`}>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useApi, getBackendHealthUrl } from "../services/api";
 import { useToast } from "../context/ToastContext";
+import { useLanguage } from "../context/LanguageContext";
 
 const AddProductModal = ({
   isOpen,
@@ -8,6 +9,7 @@ const AddProductModal = ({
   onProductAdded,
   productToEdit = null,
 }) => {
+  const { t } = useLanguage();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -152,7 +154,7 @@ const AddProductModal = ({
               className={`fa ${isEditMode ? "fa-pen-to-square" : "fa-box-open"}`}
               style={{ color: "var(--primary)", marginRight: "0.5rem" }}
             ></i>
-            {isEditMode ? "Edit Product" : "Add Products"}
+            {isEditMode ? t("modalEditTitle") : t("modalAddTitle")}
           </div>
           <button
             onClick={onClose}
@@ -163,7 +165,7 @@ const AddProductModal = ({
               color: "var(--text-muted)",
               cursor: "pointer",
             }}
-            title="Close"
+            title={t("close")}
           >
             &times;
           </button>
@@ -183,7 +185,7 @@ const AddProductModal = ({
                     onClick={() => handleModeChange("single")}
                   >
                     <i className="fa fa-box"></i>
-                    <span>Single Product</span>
+                    <span>{t("singleProduct")}</span>
                   </button>
 
                   <button
@@ -199,7 +201,7 @@ const AddProductModal = ({
                         color: entryMode === "multiple" ? "var(--primary)" : "inherit",
                       }}
                     ></i>
-                    <span>Multiple (Continuous)</span>
+                    <span>{t("batchEntry")}</span>
                   </button>
                 </div>
 
@@ -214,13 +216,12 @@ const AddProductModal = ({
                     >
                       <i className="fa fa-keyboard"></i>
                       <span>
-                        <strong>Continuous Mode:</strong> Hit <strong>Enter ↵</strong>{" "}
-                        to save &amp; instantly enter next item.
+                        <strong>{t("continuousModeTitle")}</strong> {t("continuousModeHint")}
                       </span>
                     </div>
                     {addedCount > 0 && (
                       <span className="batch-counter-badge">
-                        <i className="fa fa-check"></i> {addedCount} added
+                        <i className="fa fa-check"></i> {t("addedCountBadge", { count: addedCount })}
                       </span>
                     )}
                   </div>
@@ -281,13 +282,13 @@ const AddProductModal = ({
             {/* Product Inputs */}
             <div className="form-group">
               <label className="form-label">
-                Product Name <span style={{ color: "#ef4444" }}>*</span>
+                {t("labelProductName")} <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <input
                 ref={nameInputRef}
                 type="text"
                 className="form-control-modern"
-                placeholder="e.g. Wireless Mouse, Milk, Coffee Beans"
+                placeholder={t("placeholderProductName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoFocus
@@ -304,7 +305,7 @@ const AddProductModal = ({
             >
               <div className="form-group">
                 <label className="form-label">
-                  Unit Price (NRs) <span style={{ color: "#ef4444" }}>*</span>
+                  {t("labelPrice")} <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <input
                   type="number"
@@ -320,7 +321,7 @@ const AddProductModal = ({
 
               <div className="form-group">
                 <label className="form-label">
-                  Stock Quantity <span style={{ color: "#ef4444" }}>*</span>
+                  {t("labelQuantity")} <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <input
                   type="number"
@@ -345,7 +346,7 @@ const AddProductModal = ({
                   onClick={onClose}
                   disabled={isSubmitting}
                 >
-                  <i className="fa fa-check"></i> Done {addedCount > 0 ? `(${addedCount})` : ""}
+                  <i className="fa fa-check"></i> {t("done")} {addedCount > 0 ? `(${addedCount})` : ""}
                 </button>
                 <button
                   type="submit"
@@ -354,11 +355,11 @@ const AddProductModal = ({
                 >
                   {isSubmitting ? (
                     <>
-                      <i className="fa fa-spinner fa-spin"></i> Saving...
+                      <i className="fa fa-spinner fa-spin"></i> {t("saving")}
                     </>
                   ) : (
                     <>
-                      <i className="fa fa-arrow-right"></i> Save &amp; Next (Enter ↵)
+                      <i className="fa fa-arrow-right"></i> {t("saveAndNext")}
                     </>
                   )}
                 </button>
@@ -371,7 +372,7 @@ const AddProductModal = ({
                   onClick={onClose}
                   disabled={isSubmitting}
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
                 <button
                   type="submit"
@@ -381,12 +382,12 @@ const AddProductModal = ({
                   {isSubmitting ? (
                     <>
                       <i className="fa fa-spinner fa-spin"></i>{" "}
-                      {isEditMode ? "Updating..." : "Saving..."}
+                      {isEditMode ? t("updating") : t("saving")}
                     </>
                   ) : (
                     <>
                       <i className={`fa ${isEditMode ? "fa-check" : "fa-plus"}`}></i>{" "}
-                      {isEditMode ? "Update Product" : "Save Product (Enter ↵)"}
+                      {isEditMode ? t("updateProduct") : `${t("save")} (Enter ↵)`}
                     </>
                   )}
                 </button>

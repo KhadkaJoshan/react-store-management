@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { jsPDF } from "jspdf";
+import { useLanguage } from "../context/LanguageContext";
 import "./ReceiptModal.css";
 
 /**
@@ -13,6 +14,7 @@ export default function ReceiptModal({
   billData = null,
   onNewBill = null,
 }) {
+  const { t } = useLanguage();
   const [format, setFormat] = useState("standard"); // 'standard' (A4) | 'thermal' (80mm POS slip)
 
   if (!isOpen || !billData) return null;
@@ -51,12 +53,12 @@ export default function ReceiptModal({
       doc.setFont("helvetica", "bold");
       doc.setFontSize(22);
       doc.setTextColor(...primaryColor);
-      doc.text("StoreFlow", 20, 25);
+      doc.text("Gajurmukhi Veterinary", 20, 25);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(...mutedColor);
-      doc.text("Retail Management & POS System", 20, 31);
+      doc.text("Veterinary Pharmacy & Animal Care Store", 20, 31);
       doc.text("Official Customer Tax Invoice", 20, 36);
 
       // Invoice Meta Right-aligned
@@ -147,7 +149,7 @@ export default function ReceiptModal({
       doc.text("Thank you for your business! Please visit us again.", 105, 275, {
         align: "center",
       });
-      doc.text("Powered by StoreFlow Retail Management", 105, 280, {
+      doc.text("Powered by Gajurmukhi Veterinary Management", 105, 280, {
         align: "center",
       });
 
@@ -169,19 +171,19 @@ export default function ReceiptModal({
               type="button"
               className={`format-pill-btn ${format === "standard" ? "active" : ""}`}
               onClick={() => setFormat("standard")}
-              title="Standard A4 Invoice"
+              title={t("receiptStandard")}
             >
               <i className="fa fa-file-invoice"></i>
-              <span>Standard A4</span>
+              <span>{t("receiptStandard")}</span>
             </button>
             <button
               type="button"
               className={`format-pill-btn ${format === "thermal" ? "active" : ""}`}
               onClick={() => setFormat("thermal")}
-              title="80mm Thermal POS Slip"
+              title={t("receiptThermal")}
             >
               <i className="fa fa-receipt"></i>
-              <span>Thermal (80mm)</span>
+              <span>{t("receiptThermal")}</span>
             </button>
           </div>
 
@@ -193,8 +195,8 @@ export default function ReceiptModal({
               style={{ padding: "0.45rem 0.85rem", fontSize: "0.85rem" }}
               title="Download clean PDF invoice"
             >
-              <i className="fa fa-download" style={{ color: "#4f46e5" }}></i>
-              <span>PDF</span>
+              <i className="fa fa-download" style={{ color: "var(--primary)" }}></i>
+              <span>{t("downloadPDF")}</span>
             </button>
 
             <button
@@ -205,7 +207,7 @@ export default function ReceiptModal({
               title="Print directly to printer"
             >
               <i className="fa fa-print"></i>
-              <span>Print</span>
+              <span>{t("print")}</span>
             </button>
 
             <button
@@ -219,7 +221,7 @@ export default function ReceiptModal({
                 cursor: "pointer",
                 padding: "0 0.4rem",
               }}
-              title="Close receipt preview"
+              title={t("close")}
             >
               &times;
             </button>
@@ -235,17 +237,17 @@ export default function ReceiptModal({
               <div className="receipt-brand-row">
                 <div>
                   <div className="receipt-brand-name">
-                    Store<span>Flow</span>
+                    {t("brandName")}<span> {t("brandSubtitle")}</span>
                   </div>
                   <div className="receipt-subtitle">
-                    Retail Management &bull; Customer Tax Invoice
+                    {t("receiptSubtitle")}
                   </div>
                 </div>
 
                 <div className="receipt-meta-box">
                   <div className="receipt-inv-number">{invoiceNumber}</div>
-                  <div>Date: {date}</div>
-                  <div>Cashier: {cashier}</div>
+                  <div>{t("date")}: {date}</div>
+                  <div>{t("cashier")}: {cashier}</div>
                 </div>
               </div>
             </div>
@@ -255,17 +257,17 @@ export default function ReceiptModal({
               <thead>
                 <tr>
                   <th style={{ width: "8%" }}>#</th>
-                  <th style={{ width: "45%" }}>Item</th>
-                  <th className="col-right" style={{ width: "17%" }}>Price</th>
-                  <th className="col-center" style={{ width: "12%" }}>Qty</th>
-                  <th className="col-right" style={{ width: "18%" }}>Total</th>
+                  <th style={{ width: "45%" }}>{t("itemCol")}</th>
+                  <th className="col-right" style={{ width: "17%" }}>{t("unitPrice")}</th>
+                  <th className="col-center" style={{ width: "12%" }}>{t("piecesQty")}</th>
+                  <th className="col-right" style={{ width: "18%" }}>{t("lineTotal")}</th>
                 </tr>
               </thead>
               <tbody>
                 {validItems.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ textAlign: "center", color: "#64748b", padding: "1.5rem" }}>
-                      No items in this invoice.
+                      {t("noItemsInInvoice")}
                     </td>
                   </tr>
                 ) : (
@@ -294,15 +296,15 @@ export default function ReceiptModal({
             <div className="receipt-summary-container">
               <div className="receipt-summary-box">
                 <div className="receipt-summary-line">
-                  <span>Subtotal:</span>
+                  <span>{t("subtotal")}:</span>
                   <span>NRs. {Number(grandTotal).toFixed(2)}</span>
                 </div>
                 <div className="receipt-summary-line">
-                  <span>Tax (0%):</span>
+                  <span>{t("taxZero")}:</span>
                   <span>NRs. 0.00</span>
                 </div>
                 <div className="receipt-summary-total">
-                  <span>Grand Total:</span>
+                  <span>{t("grandTotalPayable")}:</span>
                   <span>NRs. {Number(grandTotal).toFixed(2)}</span>
                 </div>
               </div>
@@ -311,10 +313,10 @@ export default function ReceiptModal({
             {/* Clean Store Footer */}
             <div className="receipt-footer">
               <p style={{ margin: "0 0 0.3rem 0", fontWeight: 600 }}>
-                Thank you for shopping with us! Please visit again.
+                {t("thankYouShopping")}
               </p>
               <p style={{ margin: 0, fontSize: "0.74rem", color: "#94a3b8" }}>
-                System generated receipt &bull; StoreFlow POS
+                {t("systemGenerated")}
               </p>
             </div>
           </div>

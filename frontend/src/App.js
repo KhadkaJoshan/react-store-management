@@ -12,23 +12,26 @@ import LogoutButton from "./pages/logout";
 import Sales from "./pages/Sales";
 
 import { ToastProvider } from "./context/ToastContext";
+import { LanguageProvider } from "./context/LanguageContext";
 
 function App() {
   return (
-    <ToastProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route index element={<SignInWithGoogle />} />
-          <Route path="/" element={<Layout />}>
-            <Route path="viewproducts" element={<ShowAllProducts />} />
-            <Route path="newbilling" element={<NewBilling />} />
-            <Route path="sales" element={<Sales />} />
-            <Route path="logout" element={<LogoutButton />} />
-            <Route path="*" element={<NoPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </ToastProvider>
+    <LanguageProvider>
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route index element={<SignInWithGoogle />} />
+            <Route path="/" element={<Layout />}>
+              <Route path="viewproducts" element={<ShowAllProducts />} />
+              <Route path="newbilling" element={<NewBilling />} />
+              <Route path="sales" element={<Sales />} />
+              <Route path="logout" element={<LogoutButton />} />
+              <Route path="*" element={<NoPage />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
+    </LanguageProvider>
   );
 }
 

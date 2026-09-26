@@ -57,7 +57,7 @@
 .btn-table-export:hover {
   background: #f1f5f9;
   border-color: #94a3b8;
-  color: var(--primary, #4f46e5);
+  color: var(--primary, #15803d);
 }
 
 /* Desktop & Tablet Table */
@@ -97,7 +97,7 @@
 
 .modern-data-table th.sortable:hover {
   background: #f1f5f9;
-  color: var(--primary, #4f46e5);
+  color: var(--primary, #15803d);
 }
 
 .sort-icon {
@@ -109,7 +109,7 @@
 }
 
 .sort-icon.active {
-  color: var(--primary, #4f46e5);
+  color: var(--primary, #15803d);
 }
 
 .modern-data-table tbody tr {
@@ -123,8 +123,8 @@
 }
 
 .modern-data-table tbody tr.row-selected {
-  background-color: #eef2ff !important;
-  box-shadow: inset 3px 0 0 var(--primary, #4f46e5);
+  background-color: var(--primary-light, #f0fdf4) !important;
+  box-shadow: inset 3px 0 0 var(--primary, #15803d);
 }
 
 .modern-data-table td {
@@ -189,7 +189,7 @@
 }
 
 .page-size-select:focus {
-  border-color: var(--primary, #4f46e5);
+  border-color: var(--primary, #15803d);
 }
 
 .pagination-controls {
@@ -221,8 +221,8 @@
 }
 
 .btn-page.active {
-  background: var(--primary, #4f46e5);
-  border-color: var(--primary, #4f46e5);
+  background: var(--primary, #15803d);
+  border-color: var(--primary, #15803d);
   color: #ffffff;
 }
 
@@ -263,14 +263,14 @@
 
   .mobile-table-card:hover,
   .mobile-table-card:active {
-    border-color: var(--primary, #4f46e5);
+    border-color: var(--primary, #15803d);
     background: #fcfdfe;
   }
 
   .mobile-table-card.card-selected {
-    border-color: var(--primary, #4f46e5);
-    background: #f5f7ff;
-    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+    border-color: var(--primary, #15803d);
+    background: var(--primary-light, #f0fdf4);
+    box-shadow: 0 0 0 2px var(--primary-glow, rgba(21, 128, 61, 0.2));
   }
 
   .mobile-card-header {
